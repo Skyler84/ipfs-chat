@@ -1,0 +1,128 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+hr {
+  margin: 1.5rem 0;
+}
+
+#chatStatus,
+#chatRoom,
+#chatPeerId {
+  margin: 0.3rem 0;
+}
+
+#chatDialStatus {
+  margin: 0.3rem 0 0.8rem;
+  text-align: left;
+  color: #333;
+}
+
+#chatDiagnostics {
+  margin: 0.75rem 0;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: left;
+  background: #fff;
+}
+
+#chatDiagnostics button {
+  margin-top: 0.5rem;
+}
+
+.chatControls {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.chatControls input {
+  flex: 1;
+  padding: 0.5rem;
+}
+
+.chatControls button {
+  white-space: nowrap;
+}
+
+#chatMessages {
+  min-height: 180px;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: left;
+  background: #fafafa;
+}
+
+.chatMessage {
+  margin: 0.2rem 0;
+  word-break: break-word;
+}
+
+.chatMessage.system {
+  color: #666;
+}
+
+.chatMessage.self {
+  color: #0a66c2;
+}
+
+.chatMessage.peer {
+  color: #111;
+}
+
+#chatDebugLog {
+  margin-top: 0.75rem;
+  min-height: 120px;
+  max-height: 220px;
+  overflow-y: auto;
+  text-align: left;
+  background: #101418;
+  color: #c7f1d5;
+  border: 1px solid #2e3a3a;
+  border-radius: 8px;
+  padding: 0.75rem;
+  white-space: pre-wrap;
+}
