@@ -1,13 +1,13 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route} from 'react-router'
+import { HashRouter, Routes, Route} from 'react-router'
 import About from './About'
 import App from './App'
 import './index.css'
 import { HeliaProvider } from '@/provider/HeliaProvider'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <BrowserRouter>
+  <HashRouter>
   {/* <React.StrictMode> */}
   <Routes>
     <Route path="/" element={<HeliaProvider><App /></HeliaProvider>} />
@@ -17,5 +17,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <App />
     </HeliaProvider> */}
   {/* </React.StrictMode> */}
-  </BrowserRouter>
+  </HashRouter>
 )

@@ -1,10 +1,17 @@
 import { React, useCallback, useEffect, useRef, useState } from 'react'
 
 const historical_versions = {
+    "0.2.1": {
+        description: "Changed BrowserRouter to HashRouter to allow for routing on IPFS web-gateways, since /about/index.html doesn't actually exist.",
+    },
+    "0.2.0": {
+        description: "Added react routing with an about page (this page) with historical version information.",
+        cid: "QmSKbdkpWRX4PebDaSpT1UY5KPVamPwVS18SXyjtJRquwo"
+    },
     "0.1.0": {
         description: "Initial release with basic chat functionality.",
         cid: "QmPPCyiB4rBJp2mSDzErmcy1PdRzNqsedJex6VMMYWzxLr"
-    }
+    },
 }
 
 // Decide if this is being accessed from a local server or an IPFS web-gateway.
