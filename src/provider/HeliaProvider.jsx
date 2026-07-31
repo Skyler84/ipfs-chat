@@ -13,6 +13,7 @@ import { createLibp2p } from 'libp2p'
 import PropTypes from 'prop-types'
 import { noise } from '@chainsafe/libp2p-noise'
 import { yamux } from '@chainsafe/libp2p-yamux'
+import { IDBDatastore } from 'datastore-idb'
 
 import {
   React,
@@ -47,8 +48,17 @@ export const HeliaProvider = ({ children }) => {
       try {
         console.info('Starting Helia')
         var libp2p_options = libp2pDefaults()
+
+        const libp2p_datastore = new IDBDatastore('libp2p')
+        await libp2p_datastore.open()
+        const helia_datastore = new IDBDatastore('helia')
+        await helia_datastore.open()
+        console.log('libp2p_datastore', libp2p_datastore)
+        console.log('helia_datastore', helia_datastore)
+
         // const helia = await createHelia()
-        const libp2p = await heliaDefaults({
+        const heliaInit = await heliaDefaults({
+          datastore: helia_datastore,
           libp2p: {
             addresses: {
               listen: [
@@ -58,6 +68,7 @@ export const HeliaProvider = ({ children }) => {
             },
             // a connection encrypter is necessary to dial the relay
             connectionEncrypters: [noise()],
+            datastore: libp2p_datastore,
             // a stream muxer is necessary to dial the relay
             streamMuxers: [yamux()],
             transports: [
@@ -83,8 +94,8 @@ export const HeliaProvider = ({ children }) => {
             },
           }
         })
-        console.log('libp2p', libp2p)
-        const helia = await createHelia(libp2p)
+        console.log('libp2p', heliaInit.libp2p)
+        const helia = await createHelia(heliaInit)
         // const helia = await createHelia({ libp2p })
         setHelia(helia)
         setFs(unixfs(helia))

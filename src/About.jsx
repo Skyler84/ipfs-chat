@@ -1,8 +1,12 @@
 import { React, useCallback, useEffect, useRef, useState } from 'react'
 
 const historical_versions = {
+    "0.4.0-a1": {
+        description: "Added IndexDB datastore for libp2p and helia persistence."
+    },
     "0.3.0": {
-        description: "Added settings page, added WebTransport+WebRTC-Direct, tidied up app."
+        description: "Added settings page, added WebTransport+WebRTC-Direct, tidied up app.",
+        cid: "QmYPLVBbNoDQqWjY3dLRLimt7bpvhBLP2B7RwbJbg5c1s2"
     },
     "0.2.1": {
         description: "Changed BrowserRouter to HashRouter to allow for routing on IPFS web-gateways, since /about/index.html doesn't actually exist.",
