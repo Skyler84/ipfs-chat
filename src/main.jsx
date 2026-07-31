@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { HashRouter, Routes, Route} from 'react-router'
 import About from './About'
-import App from './App'
+import App from './App.tsx'
 import './index.css'
 import { HeliaProvider } from '@/provider/HeliaProvider'
 
