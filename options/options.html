@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPFS Chat</title>
+</head>
+<body>
+    <h1>IPFS Chat Settings</h1>
+    
+    <form id="settingsForm">
+        <div>
+            <label for="serverUrl">Server URL:</label>
+            <input type="text" id="serverUrl" name="serverUrl" placeholder="Enter server URL">
+        </div>
+        
+        <div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" placeholder="Enter username">
+        </div>
+        
+        <div>
+            <label for="theme">Theme:</label>
+            <select id="theme" name="theme">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+            </select>
+        </div>
+        
+        <button type="button" onclick="submitSettings()">Submit</button>
+    </form>
+    
+    <script>
+        function submitSettings() {
+            const settings = {
+                serverUrl: document.getElementById('serverUrl').value,
+                username: document.getElementById('username').value,
+                theme: document.getElementById('theme').value
+            };
+            console.log('Settings submitted:', settings);
+            alert('Settings saved: ' + JSON.stringify(settings));
+        }
+    </script>
+</body>
+</html>
