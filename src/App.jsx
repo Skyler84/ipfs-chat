@@ -9,7 +9,6 @@ const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
 function App () {
-  const [text, setText] = useState('')
   const [connectedPeers, setConnectedPeers] = useState(0)
   const [chatStatus, setChatStatus] = useState('Waiting for Helia...')
   const [chatName, setChatName] = useState('')
@@ -24,7 +23,7 @@ function App () {
   const [chatDebugLog, setChatDebugLog] = useState([])
   const [dialMultiaddrInput, setDialMultiaddrInput] = useState('')
   const [dialStatus, setDialStatus] = useState('')
-  const [showDiagnostics, setShowDiagnostics] = useState(true)
+  const [showDiagnostics, setShowDiagnostics] = useState(false)
   const [showDebugLog, setShowDebugLog] = useState(false)
   const pubsubRef = useRef(null)
   const joinedRoomRef = useRef('')
@@ -325,35 +324,6 @@ function App () {
         }}
       >Helia Status - Connected Peers: {connectedPeers}
       </div>
-      <input
-        id='textInput'
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-        type='text'
-      />
-      <button
-        id='commitTextButton'
-        onClick={() => commitText(text)}
-      >Add Text To Node
-      </button>
-      <div
-        id='cidOutput'
-      >textCid: {cidString}
-      </div>
-      {cidString && (
-        <>
-          <button
-            id='fetchCommittedTextButton'
-            onClick={() => fetchCommittedText()}
-          >Fetch Committed Text
-          </button>
-          <div
-            id='committedTextOutput'
-          >Committed Text: {committedText}
-          </div>
-        </>)}
-
-      <hr />
       <h2>Minimal Pubsub Chatroom</h2>
       <div id='chatStatus'>Status: {chatStatus}</div>
       <div id='chatRoom'>Joined room: {joinedRoom || '(none)'}</div>
