@@ -3,8 +3,9 @@
 import { unixfs } from '@helia/unixfs'
 import { createHelia, heliaDefaults, libp2pDefaults } from 'helia'
 import { circuitRelayTransport } from '@libp2p/circuit-relay-v2'
-import { webRTC } from '@libp2p/webrtc'
+import { webRTC, webRTCDirect } from '@libp2p/webrtc'
 import { webSockets } from '@libp2p/websockets'
+import { webTransport } from '@libp2p/webtransport'
 import { gossipsub } from '@libp2p/gossipsub'
 // import { floodsub } from '@libp2p/floodsub'
 import { identify } from '@libp2p/identify'
@@ -62,7 +63,9 @@ export const HeliaProvider = ({ children }) => {
             transports: [
               webSockets(),
               webRTC(),
-              circuitRelayTransport()
+              webRTCDirect(),
+              circuitRelayTransport(),
+              webTransport()
             ],
             services: {
               ...libp2p_options.services,
