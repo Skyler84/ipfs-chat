@@ -1,6 +1,6 @@
 {
-  "v0.4.0-a3": {
-    "description": "- Add browser IDBBlockstore support."
+  "v0.4.1": {
+    "description": "- Add browser IDBBlockstore support.\n- Add build-time script to manage history.\n- Remove references to old text bit.\n- Add ChatMessage+ChatInput+ChatRoom components.\n- Fix: Libp2p options When refactoring the libp2p options, it was not using helia sane defaults. We weren't getting many peers any more.\n- Make ChatInput component support multiline text."
   },
   "v0.4.0-a2": {
     "description": "Improved peers UI, added click-to-copy text. A few nice-to-haves.",
