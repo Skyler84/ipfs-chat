@@ -23,7 +23,7 @@ function App () {
   const [connectedPeerIds, setConnectedPeerIds] = useState([])
   const [connectedPeersDetail, setConnectedPeersDetail] = useState([])
   const [localPeerDetail, setLocalPeerDetail] = useState(null)
-  const [showConnectedPeers, setShowConnectedPeers] = useState(true)
+  const [showConnectedPeers, setShowConnectedPeers] = useState(false)
   const [chatDebugLog, setChatDebugLog] = useState([])
   const [dialMultiaddrInput, setDialMultiaddrInput] = useState('')
   const [dialStatus, setDialStatus] = useState('')
@@ -32,6 +32,7 @@ function App () {
   const pubsubRef = useRef(null)
   const joinedRoomRef = useRef('')
   const seenIdsRef = useRef(new Set())
+  const peerConnectionFirstSeenRef = useRef(new Map())
   const messageHandlerRef = useRef(null)
   const { helia, error, starting } = useHelia()
   const {
@@ -70,6 +71,21 @@ function App () {
     const connections = helia.libp2p.getConnections()
     const localMultiaddrs = helia.libp2p.getMultiaddrs().map((addr) => addr.toString())
     const peerMap = new Map()
+    const connectedPeerIdSet = new Set()
+
+    const parseConnectionStart = (connection) => {
+      const openTimestamp = connection?.stat?.timeline?.open
+
+      if (typeof openTimestamp === 'number' && Number.isFinite(openTimestamp)) {
+        const openDate = new Date(openTimestamp)
+
+        if (!Number.isNaN(openDate.getTime())) {
+          return openDate.toISOString()
+        }
+      }
+
+      return new Date().toISOString()
+    }
 
     connections.forEach((connection) => {
       const peerId = connection.remotePeer?.toString?.() ?? ''
@@ -78,13 +94,24 @@ function App () {
         return
       }
 
+      connectedPeerIdSet.add(peerId)
+
       const connectionAddress = connection.remoteAddr?.toString?.() ?? ''
+      const connectionStart = parseConnectionStart(connection)
+      const previouslySeenStart = peerConnectionFirstSeenRef.current.get(peerId)
+      const firstSeenStart = previouslySeenStart == null || connectionStart < previouslySeenStart
+        ? connectionStart
+        : previouslySeenStart
+
+      peerConnectionFirstSeenRef.current.set(peerId, firstSeenStart)
+
       const currentPeer = peerMap.get(peerId) ?? {
         peerId,
         addresses: [],
         connectedAddress: null,
         connectionHistory: {},
         protocols: [],
+        connectionStartedAt: firstSeenStart,
         latency: null,
         lastSeen: new Date().toISOString()
       }
@@ -98,8 +125,16 @@ function App () {
       }
 
       currentPeer.protocols = Array.from(new Set(currentPeer.protocols.concat(formatConnectionProtocols(connection))))
+      currentPeer.connectionStartedAt =
+        currentPeer.connectionStartedAt < firstSeenStart ? currentPeer.connectionStartedAt : firstSeenStart
       currentPeer.lastSeen = new Date().toISOString()
       peerMap.set(peerId, currentPeer)
+    })
+
+    Array.from(peerConnectionFirstSeenRef.current.keys()).forEach((peerId) => {
+      if (!connectedPeerIdSet.has(peerId)) {
+        peerConnectionFirstSeenRef.current.delete(peerId)
+      }
     })
 
     setLocalPeerDetail({
@@ -112,7 +147,18 @@ function App () {
       lastSeen: new Date().toISOString()
     })
 
-    setConnectedPeersDetail(Array.from(peerMap.values()).sort((left, right) => left.peerId.localeCompare(right.peerId)))
+    setConnectedPeersDetail(
+      Array.from(peerMap.values()).sort((left, right) => {
+        const leftStart = left.connectionStartedAt ?? ''
+        const rightStart = right.connectionStartedAt ?? ''
+
+        if (leftStart !== rightStart) {
+          return leftStart.localeCompare(rightStart)
+        }
+
+        return left.peerId.localeCompare(right.peerId)
+      })
+    )
     setConnectedPeers(connections.length)
     setConnectedPeerIds(connections.map((connection) => connection.remotePeer.toString()))
   }, [helia])
