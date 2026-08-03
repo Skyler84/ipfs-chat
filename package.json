@@ -24,6 +24,7 @@
     "@libp2p/webrtc": "^6.0.28",
     "@libp2p/websockets": "^10.1.18",
     "@libp2p/webtransport": "^6.0.34",
+    "blockstore-idb": "^4.0.1",
     "datastore-idb": "^5.0.1",
     "helia": "^6.1.2",
     "prop-types": "^15.8.1",

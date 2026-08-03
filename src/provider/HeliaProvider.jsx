@@ -2,18 +2,12 @@
 
 import { unixfs } from '@helia/unixfs'
 import { createHelia, heliaDefaults, libp2pDefaults } from 'helia'
-import { circuitRelayTransport } from '@libp2p/circuit-relay-v2'
-import { webRTC, webRTCDirect } from '@libp2p/webrtc'
-import { webSockets } from '@libp2p/websockets'
-import { webTransport } from '@libp2p/webtransport'
-import { gossipsub } from '@libp2p/gossipsub'
-// import { floodsub } from '@libp2p/floodsub'
-import { identify } from '@libp2p/identify'
-import { createLibp2p } from 'libp2p'
 import PropTypes from 'prop-types'
-import { noise } from '@chainsafe/libp2p-noise'
-import { yamux } from '@chainsafe/libp2p-yamux'
+
 import { IDBDatastore } from 'datastore-idb'
+import { IDBBlockstore } from 'blockstore-idb'
+
+import { Libp2pInitOptions } from '@/config/libp2p.ts'
 
 import {
   React,
@@ -49,59 +43,26 @@ export const HeliaProvider = ({ children }) => {
         console.info('Starting Helia')
         var libp2p_options = libp2pDefaults()
 
-        const libp2p_datastore = new IDBDatastore('libp2p')
-        await libp2p_datastore.open()
         const helia_datastore = new IDBDatastore('helia')
         await helia_datastore.open()
-        console.log('libp2p_datastore', libp2p_datastore)
-        console.log('helia_datastore', helia_datastore)
 
-        // const helia = await createHelia()
+        const helia_blockstore = new IDBBlockstore('helia-blockstore')
+        await helia_blockstore.open()
+
+        const libp2pInitOptions = await Libp2pInitOptions()
+
         const heliaInit = await heliaDefaults({
           datastore: helia_datastore,
-          libp2p: {
-            addresses: {
-              listen: [
-                '/p2p-circuit',
-                '/webrtc'
-              ]
-            },
-            // a connection encrypter is necessary to dial the relay
-            connectionEncrypters: [noise()],
-            datastore: libp2p_datastore,
-            // a stream muxer is necessary to dial the relay
-            streamMuxers: [yamux()],
-            transports: [
-              webSockets(),
-              webRTC(),
-              webRTCDirect(),
-              circuitRelayTransport(),
-              webTransport()
-            ],
-            services: {
-              ...libp2p_options.services,
-              identify: identify(),
-              pubsub: gossipsub(),
-            },
-            connectionGater: {
-              denyDialMultiaddr: () => {
-                // by default we refuse to dial local addresses from browsers since they
-                // are usually sent by remote peers broadcasting undialable multiaddrs and
-                // cause errors to appear in the console but in this example we are
-                // explicitly connecting to a local node so allow all addresses
-                return false
-              }
-            },
-          }
+          blockstore: helia_blockstore,
+          libp2p: libp2pInitOptions, // By getting Helia to initialise the libp2p instance, it will use the node ID from the datastore.
         })
-        console.log('libp2p', heliaInit.libp2p)
         const helia = await createHelia(heliaInit)
-        // const helia = await createHelia({ libp2p })
+
         setHelia(helia)
         setFs(unixfs(helia))
         setStarting(false)
         console.info('Helia started')
-        console.log(helia)
+
       } catch (e) {
         console.error(e)
         setError(true)
