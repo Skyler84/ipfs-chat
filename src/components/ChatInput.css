@@ -1,0 +1,42 @@
+.chatInputComposer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  align-items: center;
+  width: 100%;
+}
+
+.chatInputComposer.hasExtras {
+  grid-template-columns: auto 1fr auto;
+}
+
+.chatInputExtras {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.chatInputField {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.5rem;
+}
+
+.chatInputSendButton {
+  white-space: nowrap;
+  flex-shrink: 0;
+  width: fit-content;
+  justify-self: start;
+}
+
+@media (max-width: 640px) {
+  .chatInputComposer {
+    grid-template-columns: 1fr;
+  }
+
+  .chatInputExtras {
+    order: 2;
+  }
+}

@@ -1,6 +1,7 @@
 import { React, useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import Peer from './Peer'
+import ChatRoom from './components/ChatRoom'
 import { useHelia } from '@/hooks/useHelia'
 import { multiaddr } from '@multiformats/multiaddr'
 
@@ -533,34 +534,13 @@ function App () {
         <button id='chatJoinButton' onClick={joinRoom}>Join Room</button>
       </div>
 
-      <div id='chatMessages'>
-        {chatMessages.map((message) => {
-          const timestamp = new Date(message.timestamp).toLocaleTimeString()
-          const className = message.system ? 'system' : (message.self ? 'self' : 'peer')
-
-          return (
-            <div className={`chatMessage ${className}`} key={message.id}>
-              [{timestamp}] <strong>{message.from}</strong>: {message.text}
-            </div>
-          )
-        })}
-      </div>
-
-      <div className='chatControls'>
-        <input
-          id='chatMessageInput'
-          value={chatDraft}
-          onChange={(event) => setChatDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              void sendChatMessage()
-            }
-          }}
-          type='text'
-          placeholder='message'
-        />
-        <button id='chatSendButton' onClick={() => { void sendChatMessage() }}>Send</button>
-      </div>
+      <ChatRoom
+        messages={chatMessages}
+        messageDraft={chatDraft}
+        onMessageDraftChange={setChatDraft}
+        onSendMessage={() => { void sendChatMessage() }}
+        inputPlaceholder='message'
+      />
 
       {showDebugLog && (
         <pre id='chatDebugLog'>
