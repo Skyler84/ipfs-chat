@@ -10,7 +10,7 @@ const getGateway = () => {
     const host = window.location.host
     const parts = host.split('.')
     if (parts.length >= 3 && (parts[1] === 'ipfs' || parts[1] === 'ipns')) {
-        return `${window.location.protocol}//${parts.slice(2).join('.')}:${window.location.port}`
+        return `${window.location.protocol}//${parts.slice(2).join('.')}`
     }
     return DEFAULT_GATEWAY
 }
