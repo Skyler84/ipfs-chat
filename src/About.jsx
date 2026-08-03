@@ -1,8 +1,12 @@
 import { React, useCallback, useEffect, useRef, useState } from 'react'
 
 const historical_versions = {
+    "0.4.0-a2": {
+        description: "Improved peers UI, added click-to-copy text. A few nice-to-haves."
+    },
     "0.4.0-a1": {
-        description: "Added IndexDB datastore for libp2p and helia persistence."
+        description: "Added IndexDB datastore for libp2p and helia persistence.",
+        cid: "bafybeie2msbrhlty2yl3xexrekpcdotaaj2fikegolonza6jxmdohalmtm"
     },
     "0.3.0": {
         description: "Added settings page, added WebTransport+WebRTC-Direct, tidied up app.",
