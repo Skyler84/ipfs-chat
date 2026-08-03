@@ -1,6 +1,5 @@
-import { React, useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import Peer from './Peer'
 import ChatRoom from './components/ChatRoom'
 import { useHelia } from '@/hooks/useHelia'
 import { multiaddr } from '@multiformats/multiaddr'
@@ -13,28 +12,38 @@ function App () {
   const [connectedPeers, setConnectedPeers] = useState(0)
   const [chatStatus, setChatStatus] = useState('Waiting for Helia...')
   const [chatName, setChatName] = useState('')
-  const [chatRoomInput, setChatRoomInput] = useState(DEFAULT_CHAT_ROOM)
-  const [joinedRoom, setJoinedRoom] = useState('')
+  const [channelInput, setChannelInput] = useState(DEFAULT_CHAT_ROOM)
+  const [showChannelComposer, setShowChannelComposer] = useState(false)
+  const [channelAction, setChannelAction] = useState('join')
+  const [channels, setChannels] = useState([])
+  const [activeRoom, setActiveRoom] = useState('')
   const [chatDraft, setChatDraft] = useState('')
-  const [chatMessages, setChatMessages] = useState([])
+  const [roomMessages, setRoomMessages] = useState({})
   const [localPeerId, setLocalPeerId] = useState('')
   const [subscribedTopics, setSubscribedTopics] = useState([])
   const [topicSubscribers, setTopicSubscribers] = useState([])
   const [connectedPeerIds, setConnectedPeerIds] = useState([])
   const [connectedPeersDetail, setConnectedPeersDetail] = useState([])
-  const [localPeerDetail, setLocalPeerDetail] = useState(null)
-  const [showConnectedPeers, setShowConnectedPeers] = useState(false)
   const [chatDebugLog, setChatDebugLog] = useState([])
   const [dialMultiaddrInput, setDialMultiaddrInput] = useState('')
   const [dialStatus, setDialStatus] = useState('')
   const [showDiagnostics, setShowDiagnostics] = useState(false)
   const [showDebugLog, setShowDebugLog] = useState(false)
   const pubsubRef = useRef(null)
-  const joinedRoomRef = useRef('')
-  const seenIdsRef = useRef(new Set())
+  const activeRoomRef = useRef('')
+  const subscribedRoomsRef = useRef(new Set())
+  const seenIdsByRoomRef = useRef(new Map())
+  const autoDialAttemptedAtRef = useRef(new Map())
   const peerConnectionFirstSeenRef = useRef(new Map())
   const messageHandlerRef = useRef(null)
   const { helia, error, starting } = useHelia()
+
+  const activeMessages = roomMessages[activeRoom] ?? []
+
+  const roomLabel = useCallback((roomName) => {
+    const roomSegments = roomName.split('/').filter(Boolean)
+    return roomSegments[roomSegments.length - 1] ?? roomName
+  }, [])
 
   const pushDebugLog = useCallback((line) => {
     const timestamp = new Date().toLocaleTimeString()
@@ -57,13 +66,11 @@ function App () {
 
   const updatePeerDetails = useCallback(() => {
     if (helia == null) {
-      setLocalPeerDetail(null)
       setConnectedPeersDetail([])
       return
     }
 
     const connections = helia.libp2p.getConnections()
-    const localMultiaddrs = helia.libp2p.getMultiaddrs().map((addr) => addr.toString())
     const peerMap = new Map()
     const connectedPeerIdSet = new Set()
 
@@ -131,16 +138,6 @@ function App () {
       }
     })
 
-    setLocalPeerDetail({
-      peerId: helia.libp2p.peerId.toString(),
-      addresses: localMultiaddrs,
-      connectedAddress: localMultiaddrs[0] ?? null,
-      connectionHistory: {},
-      protocols: Array.from(new Set(connections.flatMap((connection) => formatConnectionProtocols(connection)))),
-      latency: null,
-      lastSeen: new Date().toISOString()
-    })
-
     setConnectedPeersDetail(
       Array.from(peerMap.values()).sort((left, right) => {
         const leftStart = left.connectionStartedAt ?? ''
@@ -174,7 +171,7 @@ function App () {
       setSubscribedTopics([])
     }
 
-    const room = roomOverride ?? joinedRoomRef.current
+    const room = roomOverride ?? activeRoomRef.current
 
     if (room === '' || typeof pubsub.getSubscribers !== 'function') {
       setTopicSubscribers([])
@@ -189,12 +186,117 @@ function App () {
     }
   }, [helia])
 
+  const markSeen = useCallback((room, id) => {
+    if (room === '' || id === '') {
+      return false
+    }
+
+    const seenForRoom = seenIdsByRoomRef.current.get(room) ?? new Set()
+
+    if (seenForRoom.has(id)) {
+      return true
+    }
+
+    seenForRoom.add(id)
+    seenIdsByRoomRef.current.set(room, seenForRoom)
+    return false
+  }, [])
+
+  const appendRoomMessage = useCallback((room, message) => {
+    setRoomMessages((previous) => {
+      const currentRoomMessages = previous[room] ?? []
+
+      return {
+        ...previous,
+        [room]: currentRoomMessages.concat(message)
+      }
+    })
+  }, [])
+
+  const addSystemMessage = useCallback((room, text) => {
+    appendRoomMessage(room, {
+      id: `system-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      from: 'system',
+      text,
+      timestamp: Date.now(),
+      system: true
+    })
+  }, [appendRoomMessage])
+
+  const subscribeToRoom = useCallback((room, options = {}) => {
+    const { focus = false, announce = true, actionLabel = 'Joined room' } = options
+    const pubsub = pubsubRef.current
+
+    if (pubsub == null || room === '') {
+      return false
+    }
+
+    if (!subscribedRoomsRef.current.has(room)) {
+      pubsub.subscribe(room)
+      subscribedRoomsRef.current.add(room)
+      pushDebugLog(`subscribed to topic ${room}`)
+
+      if (announce) {
+        addSystemMessage(room, `${actionLabel}: ${room}`)
+      }
+    }
+
+    setChannels((previous) => {
+      if (previous.includes(room)) {
+        return previous
+      }
+
+      return previous.concat(room)
+    })
+
+    if (focus) {
+      activeRoomRef.current = room
+      setActiveRoom(room)
+      setChatStatus(`Chat connected in ${room}`)
+    }
+
+    refreshPubsubDiagnostics(room)
+    return true
+  }, [addSystemMessage, pushDebugLog, refreshPubsubDiagnostics])
+
+  const maybeAutoDialPeer = useCallback(async (peerTarget, peerIdText) => {
+    if (helia == null || peerIdText === '' || peerIdText === localPeerId) {
+      return
+    }
+
+    const isConnected = helia.libp2p
+      .getConnections()
+      .some((connection) => connection.remotePeer?.toString?.() === peerIdText)
+
+    if (isConnected) {
+      return
+    }
+
+    const lastAttemptAt = autoDialAttemptedAtRef.current.get(peerIdText) ?? 0
+
+    if (Date.now() - lastAttemptAt < 20000) {
+      return
+    }
+
+    autoDialAttemptedAtRef.current.set(peerIdText, Date.now())
+    pushDebugLog(`auto-dial attempt for peer ${peerIdText}`)
+
+    try {
+      await helia.libp2p.dial(peerTarget)
+      pushDebugLog(`auto-dial succeeded for peer ${peerIdText}`)
+      setChatStatus(`Auto-connected to ${peerIdText.slice(0, 12)}...`)
+      refreshPubsubDiagnostics()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      pushDebugLog(`auto-dial failed for peer ${peerIdText}: ${message}`)
+    }
+  }, [helia, localPeerId, pushDebugLog, refreshPubsubDiagnostics])
+
   useEffect(() => {
     if (helia == null) {
       setConnectedPeers(0)
       setConnectedPeerIds([])
       setConnectedPeersDetail([])
-      setLocalPeerDetail(null)
       return
     }
 
@@ -205,16 +307,6 @@ function App () {
       clearInterval(interval)
     }
   }, [helia, updatePeerDetails])
-
-  const addSystemMessage = (text) => {
-    setChatMessages((previous) => previous.concat({
-      id: `system-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      from: 'system',
-      text,
-      timestamp: Date.now(),
-      system: true
-    }))
-  }
 
   useEffect(() => {
     if (helia == null) {
@@ -258,44 +350,50 @@ function App () {
     helia.libp2p.addEventListener('peer:disconnect', onPeerDisconnect)
 
     const onMessage = (event) => {
-      console.log('onMessage', event)
       const detail = event?.detail
+      const topic = String(detail?.topic ?? '')
 
-      if (detail?.topic !== joinedRoomRef.current || detail?.data == null) {
+      if (!subscribedRoomsRef.current.has(topic) || detail?.data == null) {
         return
       }
 
+      let payload
+
       try {
-        const payload = JSON.parse(decoder.decode(detail.data))
-
-        if (typeof payload?.id !== 'string' || seenIdsRef.current.has(payload.id)) {
-          return
-        }
-
-        seenIdsRef.current.add(payload.id)
-        pushDebugLog(`message received topic=${String(detail.topic)} from=${String(payload.from ?? 'anon')}`)
-        setChatMessages((previous) => previous.concat({
-          id: payload.id,
-          from: String(payload.from ?? 'anon'),
-          text: String(payload.text ?? ''),
-          timestamp: Number(payload.timestamp ?? Date.now())
-        }))
+        payload = JSON.parse(decoder.decode(detail.data))
       } catch {
-        // Ignore malformed pubsub messages
+        return
       }
+
+      const payloadId = String(payload?.id ?? '')
+
+      if (payloadId === '' || markSeen(topic, payloadId)) {
+        return
+      }
+
+      const senderPeerId = detail?.from?.toString?.() ?? ''
+      const senderTarget = detail?.from ?? senderPeerId
+
+      pushDebugLog(`message received topic=${topic} from=${String(payload.from ?? 'anon')}`)
+      appendRoomMessage(topic, {
+        id: payloadId,
+        from: String(payload.from ?? 'anon'),
+        text: String(payload.text ?? ''),
+        timestamp: Number(payload.timestamp ?? Date.now())
+      })
+
+      if (senderPeerId !== '') {
+        void maybeAutoDialPeer(senderTarget, senderPeerId)
+      }
+
+      refreshPubsubDiagnostics(topic)
     }
 
     messageHandlerRef.current = onMessage
     pubsub.addEventListener('message', onMessage)
 
-    const initialRoom = chatRoomInput.trim() || DEFAULT_CHAT_ROOM
-    pubsub.subscribe(initialRoom)
-    joinedRoomRef.current = initialRoom
-    setJoinedRoom(initialRoom)
-    addSystemMessage(`Joined room: ${initialRoom}`)
-    setChatStatus(`Chat connected in ${initialRoom}`)
-    pushDebugLog(`subscribed to topic ${initialRoom}`)
-    refreshPubsubDiagnostics(initialRoom)
+    const initialRoom = channelInput.trim() || DEFAULT_CHAT_ROOM
+    subscribeToRoom(initialRoom, { focus: true, actionLabel: 'Joined room' })
 
     const diagnosticsInterval = setInterval(() => {
       refreshPubsubDiagnostics()
@@ -311,41 +409,48 @@ function App () {
         pubsub.removeEventListener('message', messageHandlerRef.current)
       }
 
-      if (joinedRoomRef.current !== '') {
-        pushDebugLog(`unsubscribing from topic ${joinedRoomRef.current}`)
-        pubsub.unsubscribe(joinedRoomRef.current)
-        joinedRoomRef.current = ''
-      }
+      subscribedRoomsRef.current.forEach((room) => {
+        pushDebugLog(`unsubscribing from topic ${room}`)
+        pubsub.unsubscribe(room)
+      })
+
+      subscribedRoomsRef.current.clear()
+      activeRoomRef.current = ''
     }
-  }, [helia, pushDebugLog, refreshPubsubDiagnostics])
+  }, [appendRoomMessage, channelInput, helia, markSeen, maybeAutoDialPeer, pushDebugLog, refreshPubsubDiagnostics, subscribeToRoom])
 
-  const joinRoom = () => {
-    const pubsub = pubsubRef.current
-    const nextRoom = chatRoomInput.trim()
-
-    if (pubsub == null || nextRoom === '' || nextRoom === joinedRoomRef.current) {
+  const selectRoom = (room) => {
+    if (room === '' || !subscribedRoomsRef.current.has(room)) {
       return
     }
 
-    if (joinedRoomRef.current !== '') {
-      pushDebugLog(`unsubscribing from topic ${joinedRoomRef.current}`)
-      pubsub.unsubscribe(joinedRoomRef.current)
+    activeRoomRef.current = room
+    setActiveRoom(room)
+    setChatStatus(`Switched to ${room}`)
+    refreshPubsubDiagnostics(room)
+  }
+
+  const addChannel = () => {
+    const nextRoom = channelInput.trim()
+
+    if (nextRoom === '') {
+      return
     }
 
-    pubsub.subscribe(nextRoom)
-    joinedRoomRef.current = nextRoom
-    setJoinedRoom(nextRoom)
-    setChatMessages([])
-    seenIdsRef.current.clear()
-    addSystemMessage(`Joined room: ${nextRoom}`)
-    setChatStatus(`Chat connected in ${nextRoom}`)
-    pushDebugLog(`subscribed to topic ${nextRoom}`)
-    refreshPubsubDiagnostics(nextRoom)
+    const actionLabel = channelAction === 'create' ? 'Created room' : 'Joined room'
+    const didSubscribe = subscribeToRoom(nextRoom, {
+      focus: true,
+      actionLabel
+    })
+
+    if (didSubscribe) {
+      setShowChannelComposer(false)
+    }
   }
 
   const sendChatMessage = async () => {
     const pubsub = pubsubRef.current
-    const room = joinedRoomRef.current
+    const room = activeRoomRef.current
     const messageText = chatDraft.trim()
 
     if (pubsub == null || room === '' || messageText === '') {
@@ -359,16 +464,14 @@ function App () {
       timestamp: Date.now()
     }
 
-    seenIdsRef.current.add(payload.id)
-    setChatMessages((previous) => previous.concat({
+    markSeen(room, payload.id)
+    appendRoomMessage(room, {
       ...payload,
       self: true
-    }))
+    })
     setChatDraft('')
 
     try {
-      console.log('room:' + room)
-      console.log(pubsub.getSubscribers(room))
       const subscribers = typeof pubsub.getSubscribers === 'function'
         ? pubsub.getSubscribers(room).map((peerId) => peerId.toString())
         : []
@@ -392,17 +495,23 @@ function App () {
   }
 
   const dialPeerByMultiaddr = async () => {
-    console.log('dialPeerByMultiaddr', dialMultiaddrInput)
-    const dialAddress = multiaddr(dialMultiaddrInput.trim())
-    console.log('dialAddress', dialAddress)
+    const dialInput = dialMultiaddrInput.trim()
 
-    if (helia == null || dialAddress === '') {
+    if (helia == null || dialInput === '') {
+      return
+    }
+
+    let dialAddress
+
+    try {
+      dialAddress = multiaddr(dialInput)
+    } catch {
+      setDialStatus('Dial failed: invalid multiaddr')
       return
     }
 
     setDialStatus(`Dialing ${dialAddress}...`)
     pushDebugLog(`dial attempt ${dialAddress}`)
-    console.log('dialing', dialAddress)
 
     try {
       await helia.libp2p.dial(dialAddress)
@@ -413,9 +522,27 @@ function App () {
       const message = err instanceof Error ? err.message : String(err)
       setDialStatus(`Dial failed: ${message}`)
       pushDebugLog(`dial failed ${dialAddress} error=${message}`)
-      console.log('dial failed', dialAddress, err)
     }
   }
+
+  const membersByTopic = useMemo(() => {
+    const memberIds = new Set(topicSubscribers)
+    const connectedMap = new Map(connectedPeersDetail.map((peer) => [peer.peerId, peer]))
+
+    return Array.from(memberIds)
+      .map((peerId) => ({
+        peerId,
+        connected: connectedMap.has(peerId),
+        detail: connectedMap.get(peerId) ?? null
+      }))
+      .sort((left, right) => {
+        if (left.connected !== right.connected) {
+          return left.connected ? -1 : 1
+        }
+
+        return left.peerId.localeCompare(right.peerId)
+      })
+  }, [connectedPeersDetail, topicSubscribers])
 
   let colour = 'green'
 
@@ -426,127 +553,163 @@ function App () {
   }
 
   return (
-    <div className='App'>
+    <div className='App discordApp'>
       <div
         id='heliaStatus'
-        style={{
-          border: `4px solid ${colour}`,
-          paddingBottom: '4px'
-        }}
-      >Helia Status - Connected Peers: {connectedPeers}
+        className='heliaStatusBanner'
+        style={{ borderColor: colour }}
+      >Helia status: {starting ? 'starting' : error ? 'error' : 'online'} | connected peers: {connectedPeers}
       </div>
-      <h2>Minimal Pubsub Chatroom</h2>
-      <div id='chatStatus'>Status: {chatStatus}</div>
-      <div id='chatRoom'>Joined room: {joinedRoom || '(none)'}</div>
-      <div id='chatPeerId'>Local peer id: {localPeerId || '(starting)'}</div>
 
-      <div className='peerDashboard'>
-        <section className='peerDashboardSection'>
-          <div className='peerDashboardHeader'>
-            <h3>Local Peer</h3>
-            <span>{connectedPeers} connection{connectedPeers === 1 ? '' : 's'}</span>
-          </div>
-          {localPeerDetail != null ? (
-            <Peer {...localPeerDetail} />
-          ) : (
-            <div className='peerDashboardEmpty'>Waiting for Helia to finish starting up.</div>
-          )}
-        </section>
+      <div className='discordShell'>
+        <aside className='channelsSidebar'>
+          <div className='sidebarTitle'>Rooms</div>
+          <div className='channelsList'>
+            {channels.map((room) => {
+              const isActive = room === activeRoom
 
-        {connectedPeersDetail.length > 0 && (
-          <section className={`peerDashboardSection ${showConnectedPeers ? '' : 'isCollapsed'}`}>
-            <div className='peerDashboardHeader'>
-              <h3>Connected Peers</h3>
-              <div className='peerDashboardHeaderActions'>
-                <span>{connectedPeersDetail.length}</span>
+              return (
                 <button
+                  key={room}
                   type='button'
-                  className='peerDashboardToggle'
-                  onClick={() => setShowConnectedPeers((previous) => !previous)}
-                  aria-expanded={showConnectedPeers}
-                  aria-controls='connectedPeersGrid'
+                  className={`channelButton ${isActive ? 'isActive' : ''}`}
+                  onClick={() => selectRoom(room)}
                 >
-                  {showConnectedPeers ? 'Minimize' : 'Expand'}
+                  <span className='channelPrefix'>#</span>
+                  <span className='channelName'>{roomLabel(room)}</span>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className='channelComposerWrap'>
+            {showChannelComposer && (
+              <div className='channelComposer'>
+                <div className='channelComposerModes'>
+                  <button
+                    type='button'
+                    className={channelAction === 'join' ? 'modeButton isSelected' : 'modeButton'}
+                    onClick={() => setChannelAction('join')}
+                  >
+                    Join
+                  </button>
+                  <button
+                    type='button'
+                    className={channelAction === 'create' ? 'modeButton isSelected' : 'modeButton'}
+                    onClick={() => setChannelAction('create')}
+                  >
+                    Create
+                  </button>
+                </div>
+                <input
+                  id='chatRoomInput'
+                  value={channelInput}
+                  onChange={(event) => setChannelInput(event.target.value)}
+                  type='text'
+                  placeholder='room/path'
+                />
+                <button type='button' className='channelApplyButton' onClick={addChannel}>
+                  {channelAction === 'create' ? 'Create channel' : 'Join channel'}
                 </button>
               </div>
-            </div>
-            {showConnectedPeers && (
-              <div className='peerDashboardGrid' id='connectedPeersGrid'>
-                {connectedPeersDetail.map((peer) => (
-                  <Peer key={peer.peerId} {...peer} />
-                ))}
-              </div>
             )}
-          </section>
-        )}
+
+            <button
+              type='button'
+              className='channelAddButton'
+              onClick={() => setShowChannelComposer((previous) => !previous)}
+              aria-expanded={showChannelComposer}
+            >
+              +
+            </button>
+          </div>
+        </aside>
+
+        <main className='chatMainPanel'>
+          <header className='chatMainHeader'>
+            <div>
+              <h2>#{roomLabel(activeRoom || DEFAULT_CHAT_ROOM)}</h2>
+              <p id='chatStatus'>{chatStatus}</p>
+            </div>
+            <div className='chatHeaderMeta'>
+              <div id='chatPeerId'>peer: {localPeerId || '(starting)'}</div>
+              <div id='chatDialStatus'>{dialStatus || 'dial status: idle'}</div>
+            </div>
+          </header>
+
+          <div className='chatUtilityBar'>
+            <input
+              id='chatNameInput'
+              value={chatName}
+              onChange={(event) => setChatName(event.target.value)}
+              type='text'
+              placeholder='nickname'
+            />
+            <input
+              id='chatDialMultiaddrInput'
+              value={dialMultiaddrInput}
+              onChange={(event) => setDialMultiaddrInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  void dialPeerByMultiaddr()
+                }
+              }}
+              type='text'
+              placeholder='/ip4/127.0.0.1/tcp/4001/ws/p2p/12D3KooW...'
+            />
+            <button id='chatDialPeerButton' onClick={() => { void dialPeerByMultiaddr() }}>Dial Peer</button>
+            <button id='chatToggleDiagnosticsButton' onClick={() => setShowDiagnostics((previous) => !previous)}>
+              {showDiagnostics ? 'Hide Diagnostics' : 'Show Diagnostics'}
+            </button>
+            <button id='chatToggleDebugLogButton' onClick={() => setShowDebugLog((previous) => !previous)}>
+              {showDebugLog ? 'Hide Debug Log' : 'Show Debug Log'}
+            </button>
+          </div>
+
+          <div className='chatRoomPanel'>
+            <ChatRoom
+              messages={activeMessages}
+              messageDraft={chatDraft}
+              onMessageDraftChange={setChatDraft}
+              onSendMessage={() => { void sendChatMessage() }}
+              inputPlaceholder={`Message #${roomLabel(activeRoom || DEFAULT_CHAT_ROOM)}`}
+            />
+          </div>
+
+          {showDiagnostics && (
+            <div id='chatDiagnostics'>
+              <div>Local subscribed topics: {subscribedTopics.length > 0 ? subscribedTopics.join(', ') : '(none)'}</div>
+              <div>Known subscribers in active topic: {topicSubscribers.length > 0 ? topicSubscribers.join(', ') : '(none)'}</div>
+              <div>Connected peer ids: {connectedPeerIds.length > 0 ? connectedPeerIds.join(', ') : '(none)'}</div>
+              <button id='chatRefreshDiagnosticsButton' onClick={() => refreshPubsubDiagnostics()}>Refresh Chat Diagnostics</button>
+            </div>
+          )}
+
+          {showDebugLog && (
+            <pre id='chatDebugLog'>
+              {chatDebugLog.length > 0 ? chatDebugLog.join('\n') : 'No chat logs yet'}
+            </pre>
+          )}
+        </main>
+
+        <aside className='membersSidebar'>
+          <div className='sidebarTitle'>Members</div>
+          <div className='membersMeta'>{membersByTopic.length} in room</div>
+
+          <div className='membersList'>
+            {membersByTopic.map((member) => (
+              <div key={member.peerId} className='memberRow'>
+                <span className={`memberStatus ${member.connected ? 'isConnected' : 'isDisconnected'}`} />
+                <span className='memberName'>{member.peerId}</span>
+              </div>
+            ))}
+
+            {membersByTopic.length === 0 && (
+              <div className='membersEmpty'>No peers discovered in this room yet.</div>
+            )}
+          </div>
+        </aside>
       </div>
-
-      <div className='chatControls'>
-        <input
-          id='chatDialMultiaddrInput'
-          value={dialMultiaddrInput}
-          onChange={(event) => setDialMultiaddrInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              void dialPeerByMultiaddr()
-            }
-          }}
-          type='text'
-          placeholder='/ip4/127.0.0.1/tcp/4001/ws/p2p/12D3KooW...'
-        />
-        <button id='chatDialPeerButton' onClick={() => { void dialPeerByMultiaddr() }}>Dial Peer</button>
-      </div>
-      <div id='chatDialStatus'>{dialStatus || 'Dial status: idle'}</div>
-
-      <div className='chatControls'>
-        <button id='chatToggleDiagnosticsButton' onClick={() => setShowDiagnostics((previous) => !previous)}>
-          {showDiagnostics ? 'Hide Diagnostics' : 'Show Diagnostics'}
-        </button>
-        <button id='chatToggleDebugLogButton' onClick={() => setShowDebugLog((previous) => !previous)}>
-          {showDebugLog ? 'Hide Debug Log' : 'Show Debug Log'}
-        </button>
-      </div>
-
-      {showDiagnostics && (
-        <div id='chatDiagnostics'>
-          <div>Local subscribed topics: {subscribedTopics.length > 0 ? subscribedTopics.join(', ') : '(none)'}</div>
-          <div>Known subscribers in joined topic: {topicSubscribers.length > 0 ? topicSubscribers.join(', ') : '(none)'}</div>
-          <div>Connected peer ids: {connectedPeerIds.length > 0 ? connectedPeerIds.join(', ') : '(none)'}</div>
-          <button id='chatRefreshDiagnosticsButton' onClick={() => refreshPubsubDiagnostics()}>Refresh Chat Diagnostics</button>
-        </div>
-      )}
-
-      <div className='chatControls'>
-        <input
-          id='chatNameInput'
-          value={chatName}
-          onChange={(event) => setChatName(event.target.value)}
-          type='text'
-          placeholder='nickname'
-        />
-        <input
-          id='chatRoomInput'
-          value={chatRoomInput}
-          onChange={(event) => setChatRoomInput(event.target.value)}
-          type='text'
-          placeholder={DEFAULT_CHAT_ROOM}
-        />
-        <button id='chatJoinButton' onClick={joinRoom}>Join Room</button>
-      </div>
-
-      <ChatRoom
-        messages={chatMessages}
-        messageDraft={chatDraft}
-        onMessageDraftChange={setChatDraft}
-        onSendMessage={() => { void sendChatMessage() }}
-        inputPlaceholder='message'
-      />
-
-      {showDebugLog && (
-        <pre id='chatDebugLog'>
-          {chatDebugLog.length > 0 ? chatDebugLog.join('\n') : 'No chat logs yet'}
-        </pre>
-      )}
     </div>
   )
 }

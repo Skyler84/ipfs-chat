@@ -1,201 +1,335 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
-
-hr {
-  margin: 1.5rem 0;
-}
-
-#chatStatus,
-#chatRoom,
-#chatPeerId {
-  margin: 0.3rem 0;
-}
-
-.peerDashboard {
-  display: grid;
-  gap: 1rem;
-  margin: 1.25rem 0;
-  text-align: left;
-}
-
-.peerDashboardSection {
-  display: grid;
-  gap: 0.85rem;
-  padding: 1rem;
-  border: 1px solid rgba(38, 47, 64, 0.1);
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
-  box-shadow: 0 14px 34px rgba(14, 23, 38, 0.06);
-}
-
-.peerDashboardHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.peerDashboardHeaderActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.peerDashboardHeader h3 {
+  min-height: 100vh;
   margin: 0;
-  font-size: 1rem;
+  padding: 0;
 }
 
-.peerDashboardHeader span {
-  font-size: 0.85rem;
-  color: #5b6878;
-}
-
-.peerDashboardToggle {
-  border: 1px solid rgba(38, 47, 64, 0.12);
-  border-radius: 999px;
-  padding: 0.35rem 0.75rem;
-  background: rgba(255, 255, 255, 0.92);
-  color: #243145;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.peerDashboardToggle:hover {
-  background: rgba(248, 250, 252, 1);
-}
-
-.peerDashboardSection.isCollapsed {
-  gap: 0.55rem;
-}
-
-.peerDashboardGrid {
+.discordApp {
+  min-height: 100vh;
   display: grid;
-  gap: 0.85rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-rows: auto 1fr;
+  background:
+    radial-gradient(circle at top left, rgba(39, 54, 106, 0.34), rgba(24, 29, 51, 0) 48%),
+    radial-gradient(circle at 85% 15%, rgba(37, 83, 132, 0.28), rgba(20, 25, 45, 0) 44%),
+    #1f2336;
 }
 
-.peerDashboardEmpty {
-  padding: 0.95rem 1rem;
+.heliaStatusBanner {
+  margin: 0.85rem 0.85rem 0;
+  border: 2px solid #54db8f;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  color: #dce4ff;
+  background: rgba(12, 16, 29, 0.55);
+  font-size: 0.82rem;
+}
+
+.discordShell {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr) 280px;
+  gap: 0.65rem;
+  padding: 0.85rem;
+}
+
+.channelsSidebar,
+.chatMainPanel,
+.membersSidebar {
+  min-height: 0;
   border-radius: 14px;
-  border: 1px dashed rgba(38, 47, 64, 0.18);
-  background: rgba(255, 255, 255, 0.72);
-  color: #516072;
+  border: 1px solid rgba(164, 181, 233, 0.16);
+  background: rgba(23, 28, 48, 0.84);
+  color: #e6ecff;
 }
 
-#chatDialStatus {
-  margin: 0.3rem 0 0.8rem;
-  text-align: left;
-  color: #333;
+.channelsSidebar {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 0.8rem;
 }
 
-#chatDiagnostics {
-  margin: 0.75rem 0;
-  border: 1px solid #ddd;
+.sidebarTitle {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #97a8d8;
+  font-weight: 700;
+  padding: 0.15rem 0.25rem 0.55rem;
+}
+
+.channelsList,
+.membersList {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.channelsList {
+  display: grid;
+  gap: 0.32rem;
+}
+
+.channelButton {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.45rem;
+  border: none;
   border-radius: 8px;
-  padding: 0.75rem;
+  background: transparent;
+  color: #cad5f7;
+  padding: 0.52rem 0.6rem;
   text-align: left;
-  background: #fff;
 }
 
-#chatDiagnostics button {
-  margin-top: 0.5rem;
+.channelButton:hover {
+  background: rgba(92, 110, 157, 0.35);
 }
 
-.chatControls {
-  display: flex;
-  gap: 0.5rem;
-  margin: 0.75rem 0;
+.channelButton.isActive {
+  background: linear-gradient(90deg, rgba(98, 140, 255, 0.52), rgba(67, 101, 201, 0.35));
+  color: #f5f8ff;
 }
 
-.chatControls input {
-  flex: 1;
-  padding: 0.5rem;
+.channelPrefix {
+  color: #8ea0d6;
+  font-weight: 800;
 }
 
-.chatControls button {
+.channelName {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-#chatMessages {
-  min-height: 180px;
-  max-height: 240px;
-  overflow-y: auto;
-  border: 1px solid #ddd;
+.channelComposerWrap {
+  display: grid;
+  gap: 0.55rem;
+  align-self: end;
+}
+
+.channelAddButton {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #67f0a0, #33b76d);
+  color: #10251a;
+  font-size: 2.1rem;
+  line-height: 1;
+  padding: 0.35rem 0;
+  font-weight: 900;
+}
+
+.channelAddButton:hover {
+  filter: brightness(1.06);
+}
+
+.channelComposer {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid rgba(141, 159, 210, 0.28);
+  border-radius: 10px;
+  background: rgba(18, 23, 43, 0.86);
+  padding: 0.55rem;
+}
+
+.channelComposerModes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.modeButton,
+.channelApplyButton {
+  border: 1px solid rgba(147, 166, 224, 0.32);
   border-radius: 8px;
+  background: rgba(34, 42, 72, 0.92);
+  color: #dce5ff;
+  padding: 0.45rem 0.55rem;
+  font-weight: 700;
+}
+
+.modeButton.isSelected {
+  background: rgba(91, 126, 236, 0.9);
+  border-color: rgba(133, 168, 255, 0.9);
+}
+
+.channelComposer input,
+.chatUtilityBar input {
+  border-radius: 9px;
+  border: 1px solid rgba(145, 163, 215, 0.32);
+  background: rgba(18, 23, 43, 0.9);
+  color: #edf2ff;
+  padding: 0.55rem 0.65rem;
+}
+
+.channelComposer input::placeholder,
+.chatUtilityBar input::placeholder {
+  color: #92a4d7;
+}
+
+.chatMainPanel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   padding: 0.75rem;
-  text-align: left;
-  background: #fafafa;
+  gap: 0.7rem;
 }
 
-.chatMessage {
-  margin: 0.2rem 0;
-  word-break: break-word;
+.chatMainHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.85rem;
+  border-bottom: 1px solid rgba(145, 164, 219, 0.23);
+  padding-bottom: 0.6rem;
 }
 
-.chatMessage.system {
-  color: #666;
+.chatMainHeader h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #f2f6ff;
 }
 
-.chatMessage.self {
-  color: #0a66c2;
+.chatMainHeader p {
+  margin: 0.2rem 0 0;
+  color: #aab9e2;
+  font-size: 0.88rem;
 }
 
-.chatMessage.peer {
-  color: #111;
+.chatHeaderMeta {
+  text-align: right;
+  color: #9cb1e7;
+  font-size: 0.82rem;
+}
+
+.chatUtilityBar {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.6fr) minmax(200px, 1fr) auto auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.chatUtilityBar button,
+#chatRefreshDiagnosticsButton {
+  border-radius: 9px;
+  border: 1px solid rgba(145, 165, 223, 0.34);
+  background: rgba(38, 48, 82, 0.96);
+  color: #dfebff;
+  padding: 0.52rem 0.7rem;
+  white-space: nowrap;
+}
+
+.chatUtilityBar button:hover,
+#chatRefreshDiagnosticsButton:hover,
+.channelApplyButton:hover,
+.modeButton:hover {
+  filter: brightness(1.08);
+}
+
+.chatRoomPanel {
+  min-height: 0;
+}
+
+#chatDiagnostics {
+  border: 1px solid rgba(136, 155, 207, 0.34);
+  border-radius: 10px;
+  padding: 0.68rem;
+  background: rgba(17, 23, 44, 0.93);
+  color: #cfdbfd;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.86rem;
 }
 
 #chatDebugLog {
-  margin-top: 0.75rem;
-  min-height: 120px;
-  max-height: 220px;
-  overflow-y: auto;
-  text-align: left;
-  background: #101418;
-  color: #c7f1d5;
-  border: 1px solid #2e3a3a;
-  border-radius: 8px;
-  padding: 0.75rem;
+  margin: 0;
+  border: 1px solid rgba(129, 154, 214, 0.3);
+  border-radius: 10px;
+  padding: 0.65rem;
+  background: #10162a;
+  color: #bceacf;
   white-space: pre-wrap;
+  min-height: 110px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.membersSidebar {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 0.42rem;
+  padding: 0.8rem;
+}
+
+.membersMeta {
+  color: #98addf;
+  font-size: 0.82rem;
+  padding: 0 0.25rem;
+}
+
+.memberRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.42rem 0.38rem;
+  border-radius: 8px;
+}
+
+.memberRow:hover {
+  background: rgba(93, 111, 160, 0.25);
+}
+
+.memberStatus {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+}
+
+.memberStatus.isConnected {
+  background: #4ce07f;
+  box-shadow: 0 0 0 2px rgba(76, 224, 127, 0.18);
+}
+
+.memberStatus.isDisconnected {
+  background: #a2b2dd;
+}
+
+.memberName {
+  color: #d7e2ff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.membersEmpty {
+  margin: 0.55rem 0.25rem;
+  color: #9cafdc;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 1180px) {
+  .discordShell {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .membersSidebar {
+    grid-column: 1 / -1;
+    max-height: 200px;
+  }
+}
+
+@media (max-width: 860px) {
+  .discordShell {
+    grid-template-columns: 1fr;
+  }
+
+  .channelsSidebar {
+    max-height: 280px;
+  }
+
+  .chatUtilityBar {
+    grid-template-columns: 1fr;
+  }
 }
