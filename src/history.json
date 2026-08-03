@@ -1,0 +1,29 @@
+{
+  "v0.4.0-a3": {
+    "description": "- Add browser IDBBlockstore support."
+  },
+  "v0.4.0-a2": {
+    "description": "Improved peers UI, added click-to-copy text. A few nice-to-haves.",
+    "cid": "bafybeifkh5kp4v2ntgdjkl2ynwqnapsjwftfnhohnwq5xvvguqsjlhrihq"
+  },
+  "v0.4.0-a1": {
+    "description": "Added IndexDB datastore for libp2p and helia persistence.",
+    "cid": "bafybeie2msbrhlty2yl3xexrekpcdotaaj2fikegolonza6jxmdohalmtm"
+  },
+  "v0.3.0": {
+    "description": "Added settings page, added WebTransport+WebRTC-Direct, tidied up app.",
+    "cid": "QmYPLVBbNoDQqWjY3dLRLimt7bpvhBLP2B7RwbJbg5c1s2"
+  },
+  "0.2.1": {
+    "description": "Changed BrowserRouter to HashRouter to allow for routing on IPFS web-gateways, since /about/index.html doesn't actually exist.",
+    "cid": "QmSKbdkpWRX4PebDaSpT1UY5KPVamPwVS18SXyjtJRquwo"
+  },
+  "0.2.0": {
+    "description": "Added react routing with an about page (this page) with historical version information.",
+    "cid": "QmSKbdkpWRX4PebDaSpT1UY5KPVamPwVS18SXyjtJRquwo"
+  },
+  "0.1.0": {
+    "description": "Initial release with basic chat functionality.",
+    "cid": "QmPPCyiB4rBJp2mSDzErmcy1PdRzNqsedJex6VMMYWzxLr"
+  }
+}
