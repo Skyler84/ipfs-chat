@@ -142,7 +142,6 @@ function App () {
     }
 
     try {
-      console.log('refreshPubsubDiagnostics', room, pubsub.getSubscribers(room))
       const subscribers = pubsub.getSubscribers(room).map((peerId) => peerId.toString())
       setTopicSubscribers(subscribers)
     } catch {

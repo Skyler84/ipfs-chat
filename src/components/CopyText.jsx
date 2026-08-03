@@ -103,7 +103,7 @@ export const CopyText = ({ text, value }) => {
 
   return (
     <>
-      <span onClick={handleClick} style={{ cursor: 'pointer', userSelect: 'none' }}>
+      <span onClick={handleClick} style={{ cursor: 'pointer' }}>
         {text}
       </span>
 
