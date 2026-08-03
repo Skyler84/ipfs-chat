@@ -49,7 +49,7 @@ export const HeliaProvider = ({ children }) => {
         const helia_blockstore = new IDBBlockstore('helia-blockstore')
         await helia_blockstore.open()
 
-        const libp2pInitOptions = await Libp2pInitOptions()
+        const libp2pInitOptions = await Libp2pInitOptions(libp2p_options)
 
         const heliaInit = await heliaDefaults({
           datastore: helia_datastore,

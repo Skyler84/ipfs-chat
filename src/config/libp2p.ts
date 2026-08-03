@@ -10,12 +10,13 @@ import { IDBDatastore } from 'datastore-idb'
 
 
 
-export async function Libp2pInitOptions(overrides: any = {}) {
+export async function Libp2pInitOptions(defaults: any = {}) {
     
     const libp2p_datastore = new IDBDatastore('libp2p')
     await libp2p_datastore.open()
 
     const _Libp2pInitOptions = {
+        ...defaults || {},
         addresses: {
             listen: [
                 '/p2p-circuit',
@@ -35,7 +36,7 @@ export async function Libp2pInitOptions(overrides: any = {}) {
             webTransport(),
         ],
         services: {
-            ...overrides.services || {},
+            ...defaults.services || {},
             identify: identify(),
             pubsub: gossipsub(),
         },
