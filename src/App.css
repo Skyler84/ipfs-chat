@@ -51,6 +51,79 @@ hr {
   margin: 0.3rem 0;
 }
 
+.peerDashboard {
+  display: grid;
+  gap: 1rem;
+  margin: 1.25rem 0;
+  text-align: left;
+}
+
+.peerDashboardSection {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid rgba(38, 47, 64, 0.1);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
+  box-shadow: 0 14px 34px rgba(14, 23, 38, 0.06);
+}
+
+.peerDashboardHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.peerDashboardHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.peerDashboardHeader h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.peerDashboardHeader span {
+  font-size: 0.85rem;
+  color: #5b6878;
+}
+
+.peerDashboardToggle {
+  border: 1px solid rgba(38, 47, 64, 0.12);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: #243145;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.peerDashboardToggle:hover {
+  background: rgba(248, 250, 252, 1);
+}
+
+.peerDashboardSection.isCollapsed {
+  gap: 0.55rem;
+}
+
+.peerDashboardGrid {
+  display: grid;
+  gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.peerDashboardEmpty {
+  padding: 0.95rem 1rem;
+  border-radius: 14px;
+  border: 1px dashed rgba(38, 47, 64, 0.18);
+  background: rgba(255, 255, 255, 0.72);
+  color: #516072;
+}
+
 #chatDialStatus {
   margin: 0.3rem 0 0.8rem;
   text-align: left;

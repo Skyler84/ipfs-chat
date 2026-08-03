@@ -1,5 +1,6 @@
 import { React, useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
+import Peer from './Peer'
 import { useCommitText } from '@/hooks/useCommitText'
 import { useHelia } from '@/hooks/useHelia'
 import { multiaddr } from '@multiformats/multiaddr'
@@ -20,6 +21,9 @@ function App () {
   const [subscribedTopics, setSubscribedTopics] = useState([])
   const [topicSubscribers, setTopicSubscribers] = useState([])
   const [connectedPeerIds, setConnectedPeerIds] = useState([])
+  const [connectedPeersDetail, setConnectedPeersDetail] = useState([])
+  const [localPeerDetail, setLocalPeerDetail] = useState(null)
+  const [showConnectedPeers, setShowConnectedPeers] = useState(true)
   const [chatDebugLog, setChatDebugLog] = useState([])
   const [dialMultiaddrInput, setDialMultiaddrInput] = useState('')
   const [dialStatus, setDialStatus] = useState('')
@@ -41,6 +45,77 @@ function App () {
     const timestamp = new Date().toLocaleTimeString()
     setChatDebugLog((previous) => [`[${timestamp}] ${line}`, ...previous].slice(0, 120))
   }, [])
+
+  const formatConnectionProtocols = (connection) => {
+    const protocolValues = []
+
+    if (typeof connection?.protocol === 'string' && connection.protocol !== '') {
+      protocolValues.push(connection.protocol)
+    }
+
+    if (typeof connection?.stat?.protocol === 'string' && connection.stat.protocol !== '') {
+      protocolValues.push(connection.stat.protocol)
+    }
+
+    return Array.from(new Set(protocolValues))
+  }
+
+  const updatePeerDetails = useCallback(() => {
+    if (helia == null) {
+      setLocalPeerDetail(null)
+      setConnectedPeersDetail([])
+      return
+    }
+
+    const connections = helia.libp2p.getConnections()
+    const localMultiaddrs = helia.libp2p.getMultiaddrs().map((addr) => addr.toString())
+    const peerMap = new Map()
+
+    connections.forEach((connection) => {
+      const peerId = connection.remotePeer?.toString?.() ?? ''
+
+      if (peerId === '') {
+        return
+      }
+
+      const connectionAddress = connection.remoteAddr?.toString?.() ?? ''
+      const currentPeer = peerMap.get(peerId) ?? {
+        peerId,
+        addresses: [],
+        connectedAddress: null,
+        connectionHistory: {},
+        protocols: [],
+        latency: null,
+        lastSeen: new Date().toISOString()
+      }
+
+      if (connectionAddress !== '' && !currentPeer.addresses.includes(connectionAddress)) {
+        currentPeer.addresses.push(connectionAddress)
+      }
+
+      if (currentPeer.connectedAddress == null && connectionAddress !== '') {
+        currentPeer.connectedAddress = connectionAddress
+      }
+
+      currentPeer.protocols = Array.from(new Set(currentPeer.protocols.concat(formatConnectionProtocols(connection))))
+      currentPeer.lastSeen = new Date().toISOString()
+      peerMap.set(peerId, currentPeer)
+    })
+
+    setLocalPeerDetail({
+      peerId: helia.libp2p.peerId.toString(),
+      addresses: localMultiaddrs,
+      connectedAddress: localMultiaddrs[0] ?? null,
+      connectionHistory: {},
+      protocols: Array.from(new Set(connections.flatMap((connection) => formatConnectionProtocols(connection)))),
+      latency: null,
+      lastSeen: new Date().toISOString()
+    })
+
+    setConnectedPeersDetail(Array.from(peerMap.values()).sort((left, right) => left.peerId.localeCompare(right.peerId)))
+    setConnectedPeers(connections.length)
+    setConnectedPeerIds(connections.map((connection) => connection.remotePeer.toString()))
+  }, [helia])
 
   const refreshPubsubDiagnostics = useCallback((roomOverride) => {
     const pubsub = pubsubRef.current
@@ -79,21 +154,18 @@ function App () {
     if (helia == null) {
       setConnectedPeers(0)
       setConnectedPeerIds([])
+      setConnectedPeersDetail([])
+      setLocalPeerDetail(null)
       return
     }
 
-    const updateConnectedPeers = () => {
-      setConnectedPeers(helia.libp2p.getConnections().length)
-      setConnectedPeerIds(helia.libp2p.getConnections().map((connection) => connection.remotePeer.toString()))
-    }
-
-    updateConnectedPeers()
-    const interval = setInterval(updateConnectedPeers, 500)
+    updatePeerDetails()
+    const interval = setInterval(updatePeerDetails, 500)
 
     return () => {
       clearInterval(interval)
     }
-  }, [helia])
+  }, [helia, updatePeerDetails])
 
   const addSystemMessage = (text) => {
     setChatMessages((previous) => previous.concat({
@@ -328,6 +400,47 @@ function App () {
       <div id='chatStatus'>Status: {chatStatus}</div>
       <div id='chatRoom'>Joined room: {joinedRoom || '(none)'}</div>
       <div id='chatPeerId'>Local peer id: {localPeerId || '(starting)'}</div>
+
+      <div className='peerDashboard'>
+        <section className='peerDashboardSection'>
+          <div className='peerDashboardHeader'>
+            <h3>Local Peer</h3>
+            <span>{connectedPeers} connection{connectedPeers === 1 ? '' : 's'}</span>
+          </div>
+          {localPeerDetail != null ? (
+            <Peer {...localPeerDetail} />
+          ) : (
+            <div className='peerDashboardEmpty'>Waiting for Helia to finish starting up.</div>
+          )}
+        </section>
+
+        {connectedPeersDetail.length > 0 && (
+          <section className={`peerDashboardSection ${showConnectedPeers ? '' : 'isCollapsed'}`}>
+            <div className='peerDashboardHeader'>
+              <h3>Connected Peers</h3>
+              <div className='peerDashboardHeaderActions'>
+                <span>{connectedPeersDetail.length}</span>
+                <button
+                  type='button'
+                  className='peerDashboardToggle'
+                  onClick={() => setShowConnectedPeers((previous) => !previous)}
+                  aria-expanded={showConnectedPeers}
+                  aria-controls='connectedPeersGrid'
+                >
+                  {showConnectedPeers ? 'Minimize' : 'Expand'}
+                </button>
+              </div>
+            </div>
+            {showConnectedPeers && (
+              <div className='peerDashboardGrid' id='connectedPeersGrid'>
+                {connectedPeersDetail.map((peer) => (
+                  <Peer key={peer.peerId} {...peer} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+      </div>
 
       <div className='chatControls'>
         <input
