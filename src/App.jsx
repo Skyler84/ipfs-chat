@@ -1,7 +1,6 @@
 import { React, useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import Peer from './Peer'
-import { useCommitText } from '@/hooks/useCommitText'
 import { useHelia } from '@/hooks/useHelia'
 import { multiaddr } from '@multiformats/multiaddr'
 
@@ -35,12 +34,6 @@ function App () {
   const peerConnectionFirstSeenRef = useRef(new Map())
   const messageHandlerRef = useRef(null)
   const { helia, error, starting } = useHelia()
-  const {
-    cidString,
-    commitText,
-    fetchCommittedText,
-    committedText
-  } = useCommitText()
 
   const pushDebugLog = useCallback((line) => {
     const timestamp = new Date().toLocaleTimeString()
