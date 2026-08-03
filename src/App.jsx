@@ -15,8 +15,8 @@ function App () {
   const [channelInput, setChannelInput] = useState(DEFAULT_CHAT_ROOM)
   const [showChannelComposer, setShowChannelComposer] = useState(false)
   const [channelAction, setChannelAction] = useState('join')
-  const [channels, setChannels] = useState([])
-  const [activeRoom, setActiveRoom] = useState('')
+  const [channels, setChannels] = useState([DEFAULT_CHAT_ROOM])
+  const [activeRoom, setActiveRoom] = useState(DEFAULT_CHAT_ROOM)
   const [chatDraft, setChatDraft] = useState('')
   const [roomMessages, setRoomMessages] = useState({})
   const [localPeerId, setLocalPeerId] = useState('')
@@ -226,36 +226,37 @@ function App () {
   const subscribeToRoom = useCallback((room, options = {}) => {
     const { focus = false, announce = true, actionLabel = 'Joined room' } = options
     const pubsub = pubsubRef.current
+    const normalizedRoom = room.trim()
 
-    if (pubsub == null || room === '') {
+    if (pubsub == null || normalizedRoom === '') {
       return false
     }
 
-    if (!subscribedRoomsRef.current.has(room)) {
-      pubsub.subscribe(room)
-      subscribedRoomsRef.current.add(room)
-      pushDebugLog(`subscribed to topic ${room}`)
+    if (!subscribedRoomsRef.current.has(normalizedRoom)) {
+      pubsub.subscribe(normalizedRoom)
+      subscribedRoomsRef.current.add(normalizedRoom)
+      pushDebugLog(`subscribed to topic ${normalizedRoom}`)
 
       if (announce) {
-        addSystemMessage(room, `${actionLabel}: ${room}`)
+        addSystemMessage(normalizedRoom, `${actionLabel}: ${normalizedRoom}`)
       }
     }
 
     setChannels((previous) => {
-      if (previous.includes(room)) {
+      if (previous.includes(normalizedRoom)) {
         return previous
       }
 
-      return previous.concat(room)
+      return previous.concat(normalizedRoom)
     })
 
     if (focus) {
-      activeRoomRef.current = room
-      setActiveRoom(room)
-      setChatStatus(`Chat connected in ${room}`)
+      activeRoomRef.current = normalizedRoom
+      setActiveRoom(normalizedRoom)
+      setChatStatus(`Chat connected in ${normalizedRoom}`)
     }
 
-    refreshPubsubDiagnostics(room)
+    refreshPubsubDiagnostics(normalizedRoom)
     return true
   }, [addSystemMessage, pushDebugLog, refreshPubsubDiagnostics])
 
@@ -392,7 +393,7 @@ function App () {
     messageHandlerRef.current = onMessage
     pubsub.addEventListener('message', onMessage)
 
-    const initialRoom = channelInput.trim() || DEFAULT_CHAT_ROOM
+    const initialRoom = DEFAULT_CHAT_ROOM
     subscribeToRoom(initialRoom, { focus: true, actionLabel: 'Joined room' })
 
     const diagnosticsInterval = setInterval(() => {
@@ -417,17 +418,24 @@ function App () {
       subscribedRoomsRef.current.clear()
       activeRoomRef.current = ''
     }
-  }, [appendRoomMessage, channelInput, helia, markSeen, maybeAutoDialPeer, pushDebugLog, refreshPubsubDiagnostics, subscribeToRoom])
+  }, [appendRoomMessage, helia, markSeen, maybeAutoDialPeer, pushDebugLog, refreshPubsubDiagnostics, subscribeToRoom])
 
   const selectRoom = (room) => {
-    if (room === '' || !subscribedRoomsRef.current.has(room)) {
+    const normalizedRoom = room.trim()
+
+    if (normalizedRoom === '') {
       return
     }
 
-    activeRoomRef.current = room
-    setActiveRoom(room)
-    setChatStatus(`Switched to ${room}`)
-    refreshPubsubDiagnostics(room)
+    if (!subscribedRoomsRef.current.has(normalizedRoom)) {
+      subscribeToRoom(normalizedRoom, { focus: true, announce: false })
+      return
+    }
+
+    activeRoomRef.current = normalizedRoom
+    setActiveRoom(normalizedRoom)
+    setChatStatus(`Switched to ${normalizedRoom}`)
+    refreshPubsubDiagnostics(normalizedRoom)
   }
 
   const addChannel = () => {
