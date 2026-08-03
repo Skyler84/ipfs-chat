@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import './Peer.css';
+import { CopyText } from './components/CopyText';
 
 const Peer = ({ 
   peerId, 
@@ -66,6 +67,8 @@ const Peer = ({
     });
   }, [categorizedAddresses]);
 
+  const [showAddresses, setShowAddresses] = useState(false);
+
   const formatTime = (dateString) => {
     if (!dateString) return 'unknown';
     const date = new Date(dateString);
@@ -94,32 +97,48 @@ const Peer = ({
           {peerId.slice(0, 2).toUpperCase()}
         </div>
         <div className="peer-id-section">
-          <div className="peer-id" title={peerId}>{shortPeerId}</div>
+          <div className="peer-id" title={peerId}>
+            <CopyText text={peerId} value={peerId} />
+          </div>
           {latency !== null && <div className="peer-latency">{latency}ms</div>}
         </div>
       </div>
 
       {compatibleAddresses.length > 0 && (
         <div className="peer-section">
-          <h4>Addresses ({compatibleAddresses.length})</h4>
-          <div className="addresses-list">
-            {compatibleAddresses.map((addr, idx) => (
-              <div 
-                key={idx} 
-                className={`address-item address-${addr.status}`}
-                style={{ 
-                  borderLeftColor: addr.color,
-                  opacity: addr.opacity
-                }}
-                title={addr.address}
-              >
-                <span className="address-status" style={{ backgroundColor: addr.color }}>
-                  {addr.status}
-                </span>
-                <span className="address-text">{addr.address}</span>
-              </div>
-            ))}
+          <div className="peer-section-header">
+            <h4>Addresses ({compatibleAddresses.length})</h4>
+            <button
+              type="button"
+              className="peer-section-toggle"
+              onClick={() => setShowAddresses((previous) => !previous)}
+              aria-expanded={showAddresses}
+              aria-controls={`peer-addresses-${peerId}`}
+            >
+              {showAddresses ? 'Minimize' : 'Expand'}
+            </button>
           </div>
+
+          {showAddresses && (
+            <div className="addresses-list" id={`peer-addresses-${peerId}`}>
+              {compatibleAddresses.map((addr, idx) => (
+                <div 
+                  key={idx} 
+                  className={`address-item address-${addr.status}`}
+                  style={{ 
+                    borderLeftColor: addr.color,
+                    opacity: addr.opacity
+                  }}
+                  title={addr.address}
+                >
+                  <span className="address-status" style={{ backgroundColor: addr.color }}>
+                    {addr.status}
+                  </span>                    
+                    <CopyText text={addr.address} value={addr.address} />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
