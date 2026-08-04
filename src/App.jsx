@@ -335,6 +335,7 @@ function App () {
 
     try {
       await contentRouting.provide(roomManifestCid, {onProgress: (event) => {
+          console.log(event)
           const providedPeerId = event?.provider?.toString?.() ?? ''
           // pushDebugLog(`provide progress room=${normalizedRoom} peer=${providedPeerId}`)
           // console.log(`provide progress room=${normalizedRoom} peer=${providedPeerId}`)
@@ -388,7 +389,7 @@ function App () {
 
     try {
       for await (const provider of contentRouting.findProviders(roomManifestCid, { timeout: PROVIDER_LOOKUP_TIMEOUT_MS })) {
-        const providerPeerId = provider?.id?.toString?.() ?? ''
+        const providerPeerId = ('/p2p/' + provider?.id?.toString?.()) ?? ''
 
         if (providerPeerId === '' || providerPeerId === localPeerId) {
           continue
@@ -497,11 +498,6 @@ function App () {
     })
 
     const onPeerConnect = (event) => {
-      // pushDebugLog(`peer connected ${event.detail.toString()}`)
-      // subscribedRoomsRef.current.forEach((room) => {
-      //   void announceRoomManifestProvider(room)
-      //   void discoverRoomProviders(room)
-      // })
       refreshPubsubDiagnostics()
     }
 
@@ -584,7 +580,6 @@ function App () {
       activeRoomRef.current = ''
     }
   }, [
-    announceRoomManifestProvider,
     appendRoomMessage,
     discoverRoomProviders,
     helia,
