@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import ChatRoom from './components/ChatRoom'
+import ChatHeader from './components/ChatHeader'
+import ChatUtilityBar from './components/ChatUtilityBar'
+import DiagnosticsPanel from './components/DiagnosticsPanel'
+import MembersSidebar from './components/MembersSidebar'
+import RoomsSidebar from './components/RoomsSidebar'
 import { useHelia } from '@/hooks/useHelia'
 import { multiaddr } from '@multiformats/multiaddr'
 
@@ -713,142 +718,44 @@ function App () {
           />
         )}
 
-        <aside className={`channelsSidebar mobileDrawer ${mobilePanel === 'rooms' ? 'isOpen' : ''}`}>
-          <div className='sidebarHeader'>
-            <div className='sidebarTitle'>Rooms</div>
-            <button
-              type='button'
-              className='mobileDrawerClose'
-              aria-label='Close rooms panel'
-              onClick={closeMobilePanel}
-            >
-              ×
-            </button>
-          </div>
-
-          <div className='channelsList'>
-            {channels.map((room) => {
-              const isActive = room === activeRoom
-
-              return (
-                <button
-                  key={room}
-                  type='button'
-                  className={`channelButton ${isActive ? 'isActive' : ''}`}
-                  onClick={() => selectRoom(room)}
-                >
-                  <span className='channelPrefix'>#</span>
-                  <span className='channelName'>{roomLabel(room)}</span>
-                </button>
-              )
-            })}
-          </div>
-
-          <div className='channelComposerWrap'>
-            {showChannelComposer && (
-              <div className='channelComposer'>
-                <div className='channelComposerModes'>
-                  <button
-                    type='button'
-                    className={channelAction === 'join' ? 'modeButton isSelected' : 'modeButton'}
-                    onClick={() => setChannelAction('join')}
-                  >
-                    Join
-                  </button>
-                  <button
-                    type='button'
-                    className={channelAction === 'create' ? 'modeButton isSelected' : 'modeButton'}
-                    onClick={() => setChannelAction('create')}
-                  >
-                    Create
-                  </button>
-                </div>
-                <input
-                  id='chatRoomInput'
-                  value={channelInput}
-                  onChange={(event) => setChannelInput(event.target.value)}
-                  type='text'
-                  placeholder='room/path'
-                />
-                <button type='button' className='channelApplyButton' onClick={addChannel}>
-                  {channelAction === 'create' ? 'Create channel' : 'Join channel'}
-                </button>
-              </div>
-            )}
-
-            <button
-              type='button'
-              className='channelAddButton'
-              onClick={() => setShowChannelComposer((previous) => !previous)}
-              aria-expanded={showChannelComposer}
-            >
-              +
-            </button>
-          </div>
-        </aside>
+        <RoomsSidebar
+          channels={channels}
+          activeRoom={activeRoom}
+          roomLabel={roomLabel}
+          showChannelComposer={showChannelComposer}
+          channelInput={channelInput}
+          channelAction={channelAction}
+          isOpen={mobilePanel === 'rooms'}
+          onCloseMobilePanel={closeMobilePanel}
+          onSelectRoom={selectRoom}
+          onToggleComposer={() => setShowChannelComposer((previous) => !previous)}
+          onSetChannelAction={setChannelAction}
+          onChannelInputChange={setChannelInput}
+          onAddChannel={addChannel}
+        />
 
         <main className='chatMainPanel'>
-          <header className='chatMainHeader'>
-            <button
-              type='button'
-              className='mobilePanelToggle mobilePanelToggleLeft'
-              aria-label='Open rooms panel'
-              aria-expanded={mobilePanel === 'rooms'}
-              onClick={() => toggleMobilePanel('rooms')}
-            >
-              ☰
-            </button>
+          <ChatHeader
+            roomTitle={`#${roomLabel(activeRoom || DEFAULT_CHAT_ROOM)}`}
+            chatStatus={chatStatus}
+            localPeerId={localPeerId}
+            dialStatus={dialStatus}
+            mobilePanel={mobilePanel}
+            onToggleRoomsPanel={() => toggleMobilePanel('rooms')}
+            onToggleMembersPanel={() => toggleMobilePanel('members')}
+          />
 
-            <div className='chatHeaderBody'>
-              <div>
-                <h2>#{roomLabel(activeRoom || DEFAULT_CHAT_ROOM)}</h2>
-                <p id='chatStatus'>{chatStatus}</p>
-              </div>
-              <div className='chatHeaderMeta'>
-                <div id='chatPeerId'>peer: {localPeerId || '(starting)'}</div>
-                <div id='chatDialStatus'>{dialStatus || 'dial status: idle'}</div>
-              </div>
-            </div>
-
-            <button
-              type='button'
-              className='mobilePanelToggle mobilePanelToggleRight'
-              aria-label='Open members panel'
-              aria-expanded={mobilePanel === 'members'}
-              onClick={() => toggleMobilePanel('members')}
-            >
-              👥
-            </button>
-          </header>
-
-          <div className='chatUtilityBar'>
-            <input
-              id='chatNameInput'
-              value={chatName}
-              onChange={(event) => setChatName(event.target.value)}
-              type='text'
-              placeholder='nickname'
-            />
-            <input
-              id='chatDialMultiaddrInput'
-              value={dialMultiaddrInput}
-              onChange={(event) => setDialMultiaddrInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  void dialPeerByMultiaddr()
-                }
-              }}
-              type='text'
-              placeholder='/ip4/127.0.0.1/tcp/4001/ws/p2p/12D3KooW...'
-            />
-            <button id='chatDialPeerButton' onClick={() => { void dialPeerByMultiaddr() }}>Dial Peer</button>
-            <button id='chatToggleDiagnosticsButton' onClick={() => setShowDiagnostics((previous) => !previous)}>
-              {showDiagnostics ? 'Hide Diagnostics' : 'Show Diagnostics'}
-            </button>
-            <button id='chatToggleDebugLogButton' onClick={() => setShowDebugLog((previous) => !previous)}>
-              {showDebugLog ? 'Hide Debug Log' : 'Show Debug Log'}
-            </button>
-          </div>
+          <ChatUtilityBar
+            chatName={chatName}
+            onChatNameChange={setChatName}
+            dialMultiaddrInput={dialMultiaddrInput}
+            onDialMultiaddrInputChange={setDialMultiaddrInput}
+            onDialPeer={dialPeerByMultiaddr}
+            showDiagnostics={showDiagnostics}
+            onToggleDiagnostics={() => setShowDiagnostics((previous) => !previous)}
+            showDebugLog={showDebugLog}
+            onToggleDebugLog={() => setShowDebugLog((previous) => !previous)}
+          />
 
           <div className='chatRoomPanel'>
             <ChatRoom
@@ -860,50 +767,22 @@ function App () {
             />
           </div>
 
-          {showDiagnostics && (
-            <div id='chatDiagnostics'>
-              <div>Local subscribed topics: {subscribedTopics.length > 0 ? subscribedTopics.join(', ') : '(none)'}</div>
-              <div>Known subscribers in active topic: {topicSubscribers.length > 0 ? topicSubscribers.join(', ') : '(none)'}</div>
-              <div>Connected peer ids: {connectedPeerIds.length > 0 ? connectedPeerIds.join(', ') : '(none)'}</div>
-              <button id='chatRefreshDiagnosticsButton' onClick={() => refreshPubsubDiagnostics()}>Refresh Chat Diagnostics</button>
-            </div>
-          )}
-
-          {showDebugLog && (
-            <pre id='chatDebugLog'>
-              {chatDebugLog.length > 0 ? chatDebugLog.join('\n') : 'No chat logs yet'}
-            </pre>
-          )}
+          <DiagnosticsPanel
+            showDiagnostics={showDiagnostics}
+            showDebugLog={showDebugLog}
+            subscribedTopics={subscribedTopics}
+            topicSubscribers={topicSubscribers}
+            connectedPeerIds={connectedPeerIds}
+            chatDebugLog={chatDebugLog}
+            onRefreshDiagnostics={refreshPubsubDiagnostics}
+          />
         </main>
 
-        <aside className={`membersSidebar mobileDrawer ${mobilePanel === 'members' ? 'isOpen' : ''}`}>
-          <div className='sidebarHeader'>
-            <div className='sidebarTitle'>Members</div>
-            <button
-              type='button'
-              className='mobileDrawerClose'
-              aria-label='Close members panel'
-              onClick={closeMobilePanel}
-            >
-              ×
-            </button>
-          </div>
-
-          <div className='membersMeta'>{membersByTopic.length} in room</div>
-
-          <div className='membersList'>
-            {membersByTopic.map((member) => (
-              <div key={member.peerId} className='memberRow'>
-                <span className={`memberStatus ${member.connected ? 'isConnected' : 'isDisconnected'}`} />
-                <span className='memberName'>{member.peerId}</span>
-              </div>
-            ))}
-
-            {membersByTopic.length === 0 && (
-              <div className='membersEmpty'>No peers discovered in this room yet.</div>
-            )}
-          </div>
-        </aside>
+        <MembersSidebar
+          members={membersByTopic}
+          isOpen={mobilePanel === 'members'}
+          onCloseMobilePanel={closeMobilePanel}
+        />
       </div>
     </div>
   )
