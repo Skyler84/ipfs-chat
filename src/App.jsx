@@ -1,18 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
-import ChatRoom from './components/ChatRoom'
-import ChatHeader from './components/ChatHeader'
-import ChatUtilityBar from './components/ChatUtilityBar'
-import DiagnosticsPanel from './components/DiagnosticsPanel'
+import ChatWorkspace from './components/ChatWorkspace'
+import HeliaStatusBanner from './components/HeliaStatusBanner'
 import MembersSidebar from './components/MembersSidebar'
 import RoomsSidebar from './components/RoomsSidebar'
+import { useMobilePanels } from '@/hooks/useMobilePanels'
 import { useHelia } from '@/hooks/useHelia'
 import { multiaddr } from '@multiformats/multiaddr'
 
 const DEFAULT_CHAT_ROOM = 'helia-examples/chatroom'
-const MOBILE_BREAKPOINT = 768
-const MOBILE_SWIPE_THRESHOLD = 72
-const MOBILE_EDGE_SWIPE_ZONE = 32
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
@@ -37,7 +33,6 @@ function App () {
   const [dialStatus, setDialStatus] = useState('')
   const [showDiagnostics, setShowDiagnostics] = useState(false)
   const [showDebugLog, setShowDebugLog] = useState(false)
-  const [mobilePanel, setMobilePanel] = useState(null)
   const pubsubRef = useRef(null)
   const activeRoomRef = useRef('')
   const subscribedRoomsRef = useRef(new Set())
@@ -45,26 +40,17 @@ function App () {
   const autoDialAttemptedAtRef = useRef(new Map())
   const peerConnectionFirstSeenRef = useRef(new Map())
   const messageHandlerRef = useRef(null)
-  const touchStartRef = useRef(null)
   const { helia, error, starting } = useHelia()
+  const {
+    mobilePanel,
+    isMobileViewport,
+    closeMobilePanel,
+    toggleMobilePanel,
+    handleShellTouchStart,
+    handleShellTouchEnd
+  } = useMobilePanels()
 
   const activeMessages = roomMessages[activeRoom] ?? []
-
-  const isMobileViewport = useCallback(() => {
-    if (typeof window === 'undefined') {
-      return false
-    }
-
-    return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`).matches
-  }, [])
-
-  const closeMobilePanel = useCallback(() => {
-    setMobilePanel(null)
-  }, [])
-
-  const toggleMobilePanel = useCallback((panel) => {
-    setMobilePanel((previous) => (previous === panel ? null : panel))
-  }, [])
 
   const roomLabel = useCallback((roomName) => {
     const roomSegments = roomName.split('/').filter(Boolean)
@@ -318,100 +304,6 @@ function App () {
       pushDebugLog(`auto-dial failed for peer ${peerIdText}: ${message}`)
     }
   }, [helia, localPeerId, pushDebugLog, refreshPubsubDiagnostics])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`)
-
-    const syncPanelState = () => {
-      if (!mediaQuery.matches) {
-        setMobilePanel(null)
-      }
-    }
-
-    syncPanelState()
-    mediaQuery.addEventListener('change', syncPanelState)
-
-    return () => {
-      mediaQuery.removeEventListener('change', syncPanelState)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (typeof document === 'undefined' || !isMobileViewport()) {
-      return
-    }
-
-    const previousOverflow = document.body.style.overflow
-
-    if (mobilePanel != null) {
-      document.body.style.overflow = 'hidden'
-    }
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-    }
-  }, [isMobileViewport, mobilePanel])
-
-  const handleShellTouchStart = useCallback((event) => {
-    const touch = event.changedTouches?.[0]
-
-    if (touch == null) {
-      return
-    }
-
-    touchStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY
-    }
-  }, [])
-
-  const handleShellTouchEnd = useCallback((event) => {
-    if (!isMobileViewport() || typeof window === 'undefined') {
-      touchStartRef.current = null
-      return
-    }
-
-    const start = touchStartRef.current
-    const touch = event.changedTouches?.[0]
-    touchStartRef.current = null
-
-    if (start == null || touch == null) {
-      return
-    }
-
-    const deltaX = touch.clientX - start.x
-    const deltaY = touch.clientY - start.y
-
-    if (Math.abs(deltaX) < MOBILE_SWIPE_THRESHOLD || Math.abs(deltaX) <= Math.abs(deltaY)) {
-      return
-    }
-
-    if (mobilePanel === 'rooms' && deltaX < 0) {
-      setMobilePanel(null)
-      return
-    }
-
-    if (mobilePanel === 'members' && deltaX > 0) {
-      setMobilePanel(null)
-      return
-    }
-
-    if (mobilePanel != null) {
-      return
-    }
-
-    if (deltaX > 0 && start.x <= MOBILE_EDGE_SWIPE_ZONE) {
-      setMobilePanel('rooms')
-    }
-
-    if (deltaX < 0 && start.x >= window.innerWidth - MOBILE_EDGE_SWIPE_ZONE) {
-      setMobilePanel('members')
-    }
-  }, [isMobileViewport, mobilePanel])
 
   useEffect(() => {
     if (helia == null) {
@@ -699,12 +591,11 @@ function App () {
       onTouchStart={handleShellTouchStart}
       onTouchEnd={handleShellTouchEnd}
     >
-      <div
-        id='heliaStatus'
-        className='heliaStatusBanner'
-        style={{ borderColor: colour }}
-      >Helia status: {starting ? 'starting' : error ? 'error' : 'online'} | connected peers: {connectedPeers}
-      </div>
+      <HeliaStatusBanner
+        colour={colour}
+        status={starting ? 'starting' : error ? 'error' : 'online'}
+        connectedPeers={connectedPeers}
+      />
 
       <div
         className={`discordShell ${mobilePanel != null ? 'hasMobileDrawerOpen' : ''}`}
@@ -734,49 +625,36 @@ function App () {
           onAddChannel={addChannel}
         />
 
-        <main className='chatMainPanel'>
-          <ChatHeader
-            roomTitle={`#${roomLabel(activeRoom || DEFAULT_CHAT_ROOM)}`}
-            chatStatus={chatStatus}
-            localPeerId={localPeerId}
-            dialStatus={dialStatus}
-            mobilePanel={mobilePanel}
-            onToggleRoomsPanel={() => toggleMobilePanel('rooms')}
-            onToggleMembersPanel={() => toggleMobilePanel('members')}
-          />
-
-          <ChatUtilityBar
-            chatName={chatName}
-            onChatNameChange={setChatName}
-            dialMultiaddrInput={dialMultiaddrInput}
-            onDialMultiaddrInputChange={setDialMultiaddrInput}
-            onDialPeer={dialPeerByMultiaddr}
-            showDiagnostics={showDiagnostics}
-            onToggleDiagnostics={() => setShowDiagnostics((previous) => !previous)}
-            showDebugLog={showDebugLog}
-            onToggleDebugLog={() => setShowDebugLog((previous) => !previous)}
-          />
-
-          <div className='chatRoomPanel'>
-            <ChatRoom
-              messages={activeMessages}
-              messageDraft={chatDraft}
-              onMessageDraftChange={setChatDraft}
-              onSendMessage={() => { void sendChatMessage() }}
-              inputPlaceholder={`Message #${roomLabel(activeRoom || DEFAULT_CHAT_ROOM)}`}
-            />
-          </div>
-
-          <DiagnosticsPanel
-            showDiagnostics={showDiagnostics}
-            showDebugLog={showDebugLog}
-            subscribedTopics={subscribedTopics}
-            topicSubscribers={topicSubscribers}
-            connectedPeerIds={connectedPeerIds}
-            chatDebugLog={chatDebugLog}
-            onRefreshDiagnostics={refreshPubsubDiagnostics}
-          />
-        </main>
+        <ChatWorkspace
+          activeRoom={activeRoom}
+          defaultChatRoom={DEFAULT_CHAT_ROOM}
+          roomLabel={roomLabel}
+          chatStatus={chatStatus}
+          localPeerId={localPeerId}
+          dialStatus={dialStatus}
+          mobilePanel={mobilePanel}
+          onToggleRoomsPanel={() => toggleMobilePanel('rooms')}
+          onToggleMembersPanel={() => toggleMobilePanel('members')}
+          chatName={chatName}
+          onChatNameChange={setChatName}
+          dialMultiaddrInput={dialMultiaddrInput}
+          onDialMultiaddrInputChange={setDialMultiaddrInput}
+          onDialPeer={dialPeerByMultiaddr}
+          showDiagnostics={showDiagnostics}
+          onToggleDiagnostics={() => setShowDiagnostics((previous) => !previous)}
+          showDebugLog={showDebugLog}
+          onToggleDebugLog={() => setShowDebugLog((previous) => !previous)}
+          messages={activeMessages}
+          chatDraft={chatDraft}
+          onMessageDraftChange={setChatDraft}
+          onSendMessage={() => { void sendChatMessage() }}
+          inputPlaceholder={`Message #${roomLabel(activeRoom || DEFAULT_CHAT_ROOM)}`}
+          subscribedTopics={subscribedTopics}
+          topicSubscribers={topicSubscribers}
+          connectedPeerIds={connectedPeerIds}
+          chatDebugLog={chatDebugLog}
+          onRefreshDiagnostics={refreshPubsubDiagnostics}
+        />
 
         <MembersSidebar
           members={membersByTopic}
