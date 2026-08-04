@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import styles from './ChatMessage.module.css';
+import './ChatMessage.css';
 
 const ChatMessage = ({ sender, content, timestamp }) => {
   const [copied, setCopied] = useState(false);
@@ -32,26 +32,26 @@ const ChatMessage = ({ sender, content, timestamp }) => {
   };
 
   return (
-    <div className={styles.message}>
-      <div className={styles.header}>
-        <span className={styles.sender}>{sender}</span>
-        <span className={styles.timestamp} title={new Date(timestamp).toLocaleString()}>
+    <div className='message'>
+      <div className='header'>
+        <span className='sender'>{sender}</span>
+        <span className='timestamp' title={new Date(timestamp).toLocaleString()}>
           {formatTime(timestamp)}
         </span>
       </div>
-      <div className={styles.content}>
+      <div className='content'>
         <p>{content}</p>
       </div>
-      <div className={styles.actions}>
+      <div className='actions'>
         <button
-          className={styles.copyButton}
+          className='copyButton'
           onClick={handleCopyMessage}
           title="Copy message"
         >
           {copied ? '✓ Copied' : '📋 Copy'}
         </button>
         <button
-          className={styles.copyButton}
+          className='copyButton'  
           onClick={handleCopyTimestamp}
           title="Copy timestamp"
         >
