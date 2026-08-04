@@ -5,6 +5,9 @@ import { useHelia } from '@/hooks/useHelia'
 import { multiaddr } from '@multiformats/multiaddr'
 
 const DEFAULT_CHAT_ROOM = 'helia-examples/chatroom'
+const MOBILE_BREAKPOINT = 768
+const MOBILE_SWIPE_THRESHOLD = 72
+const MOBILE_EDGE_SWIPE_ZONE = 32
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
@@ -29,6 +32,7 @@ function App () {
   const [dialStatus, setDialStatus] = useState('')
   const [showDiagnostics, setShowDiagnostics] = useState(false)
   const [showDebugLog, setShowDebugLog] = useState(false)
+  const [mobilePanel, setMobilePanel] = useState(null)
   const pubsubRef = useRef(null)
   const activeRoomRef = useRef('')
   const subscribedRoomsRef = useRef(new Set())
@@ -36,9 +40,26 @@ function App () {
   const autoDialAttemptedAtRef = useRef(new Map())
   const peerConnectionFirstSeenRef = useRef(new Map())
   const messageHandlerRef = useRef(null)
+  const touchStartRef = useRef(null)
   const { helia, error, starting } = useHelia()
 
   const activeMessages = roomMessages[activeRoom] ?? []
+
+  const isMobileViewport = useCallback(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+
+    return window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`).matches
+  }, [])
+
+  const closeMobilePanel = useCallback(() => {
+    setMobilePanel(null)
+  }, [])
+
+  const toggleMobilePanel = useCallback((panel) => {
+    setMobilePanel((previous) => (previous === panel ? null : panel))
+  }, [])
 
   const roomLabel = useCallback((roomName) => {
     const roomSegments = roomName.split('/').filter(Boolean)
@@ -294,6 +315,100 @@ function App () {
   }, [helia, localPeerId, pushDebugLog, refreshPubsubDiagnostics])
 
   useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const mediaQuery = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT}px)`)
+
+    const syncPanelState = () => {
+      if (!mediaQuery.matches) {
+        setMobilePanel(null)
+      }
+    }
+
+    syncPanelState()
+    mediaQuery.addEventListener('change', syncPanelState)
+
+    return () => {
+      mediaQuery.removeEventListener('change', syncPanelState)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || !isMobileViewport()) {
+      return
+    }
+
+    const previousOverflow = document.body.style.overflow
+
+    if (mobilePanel != null) {
+      document.body.style.overflow = 'hidden'
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isMobileViewport, mobilePanel])
+
+  const handleShellTouchStart = useCallback((event) => {
+    const touch = event.changedTouches?.[0]
+
+    if (touch == null) {
+      return
+    }
+
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY
+    }
+  }, [])
+
+  const handleShellTouchEnd = useCallback((event) => {
+    if (!isMobileViewport() || typeof window === 'undefined') {
+      touchStartRef.current = null
+      return
+    }
+
+    const start = touchStartRef.current
+    const touch = event.changedTouches?.[0]
+    touchStartRef.current = null
+
+    if (start == null || touch == null) {
+      return
+    }
+
+    const deltaX = touch.clientX - start.x
+    const deltaY = touch.clientY - start.y
+
+    if (Math.abs(deltaX) < MOBILE_SWIPE_THRESHOLD || Math.abs(deltaX) <= Math.abs(deltaY)) {
+      return
+    }
+
+    if (mobilePanel === 'rooms' && deltaX < 0) {
+      setMobilePanel(null)
+      return
+    }
+
+    if (mobilePanel === 'members' && deltaX > 0) {
+      setMobilePanel(null)
+      return
+    }
+
+    if (mobilePanel != null) {
+      return
+    }
+
+    if (deltaX > 0 && start.x <= MOBILE_EDGE_SWIPE_ZONE) {
+      setMobilePanel('rooms')
+    }
+
+    if (deltaX < 0 && start.x >= window.innerWidth - MOBILE_EDGE_SWIPE_ZONE) {
+      setMobilePanel('members')
+    }
+  }, [isMobileViewport, mobilePanel])
+
+  useEffect(() => {
     if (helia == null) {
       setConnectedPeers(0)
       setConnectedPeerIds([])
@@ -429,6 +544,11 @@ function App () {
 
     if (!subscribedRoomsRef.current.has(normalizedRoom)) {
       subscribeToRoom(normalizedRoom, { focus: true, announce: false })
+
+      if (isMobileViewport()) {
+        closeMobilePanel()
+      }
+
       return
     }
 
@@ -436,6 +556,10 @@ function App () {
     setActiveRoom(normalizedRoom)
     setChatStatus(`Switched to ${normalizedRoom}`)
     refreshPubsubDiagnostics(normalizedRoom)
+
+    if (isMobileViewport()) {
+      closeMobilePanel()
+    }
   }
 
   const addChannel = () => {
@@ -453,6 +577,10 @@ function App () {
 
     if (didSubscribe) {
       setShowChannelComposer(false)
+
+      if (isMobileViewport()) {
+        closeMobilePanel()
+      }
     }
   }
 
@@ -561,7 +689,11 @@ function App () {
   }
 
   return (
-    <div className='App discordApp'>
+    <div
+      className='App discordApp'
+      onTouchStart={handleShellTouchStart}
+      onTouchEnd={handleShellTouchEnd}
+    >
       <div
         id='heliaStatus'
         className='heliaStatusBanner'
@@ -569,9 +701,31 @@ function App () {
       >Helia status: {starting ? 'starting' : error ? 'error' : 'online'} | connected peers: {connectedPeers}
       </div>
 
-      <div className='discordShell'>
-        <aside className='channelsSidebar'>
-          <div className='sidebarTitle'>Rooms</div>
+      <div
+        className={`discordShell ${mobilePanel != null ? 'hasMobileDrawerOpen' : ''}`}
+      >
+        {mobilePanel != null && (
+          <button
+            type='button'
+            className='mobileDrawerBackdrop'
+            aria-label='Close side panel'
+            onClick={closeMobilePanel}
+          />
+        )}
+
+        <aside className={`channelsSidebar mobileDrawer ${mobilePanel === 'rooms' ? 'isOpen' : ''}`}>
+          <div className='sidebarHeader'>
+            <div className='sidebarTitle'>Rooms</div>
+            <button
+              type='button'
+              className='mobileDrawerClose'
+              aria-label='Close rooms panel'
+              onClick={closeMobilePanel}
+            >
+              ×
+            </button>
+          </div>
+
           <div className='channelsList'>
             {channels.map((room) => {
               const isActive = room === activeRoom
@@ -635,14 +789,36 @@ function App () {
 
         <main className='chatMainPanel'>
           <header className='chatMainHeader'>
-            <div>
-              <h2>#{roomLabel(activeRoom || DEFAULT_CHAT_ROOM)}</h2>
-              <p id='chatStatus'>{chatStatus}</p>
+            <button
+              type='button'
+              className='mobilePanelToggle mobilePanelToggleLeft'
+              aria-label='Open rooms panel'
+              aria-expanded={mobilePanel === 'rooms'}
+              onClick={() => toggleMobilePanel('rooms')}
+            >
+              ☰
+            </button>
+
+            <div className='chatHeaderBody'>
+              <div>
+                <h2>#{roomLabel(activeRoom || DEFAULT_CHAT_ROOM)}</h2>
+                <p id='chatStatus'>{chatStatus}</p>
+              </div>
+              <div className='chatHeaderMeta'>
+                <div id='chatPeerId'>peer: {localPeerId || '(starting)'}</div>
+                <div id='chatDialStatus'>{dialStatus || 'dial status: idle'}</div>
+              </div>
             </div>
-            <div className='chatHeaderMeta'>
-              <div id='chatPeerId'>peer: {localPeerId || '(starting)'}</div>
-              <div id='chatDialStatus'>{dialStatus || 'dial status: idle'}</div>
-            </div>
+
+            <button
+              type='button'
+              className='mobilePanelToggle mobilePanelToggleRight'
+              aria-label='Open members panel'
+              aria-expanded={mobilePanel === 'members'}
+              onClick={() => toggleMobilePanel('members')}
+            >
+              👥
+            </button>
           </header>
 
           <div className='chatUtilityBar'>
@@ -700,8 +876,19 @@ function App () {
           )}
         </main>
 
-        <aside className='membersSidebar'>
-          <div className='sidebarTitle'>Members</div>
+        <aside className={`membersSidebar mobileDrawer ${mobilePanel === 'members' ? 'isOpen' : ''}`}>
+          <div className='sidebarHeader'>
+            <div className='sidebarTitle'>Members</div>
+            <button
+              type='button'
+              className='mobileDrawerClose'
+              aria-label='Close members panel'
+              onClick={closeMobilePanel}
+            >
+              ×
+            </button>
+          </div>
+
           <div className='membersMeta'>{membersByTopic.length} in room</div>
 
           <div className='membersList'>

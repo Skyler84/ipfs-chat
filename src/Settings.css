@@ -81,7 +81,6 @@ hr {
 
 #chatMessages {
   min-height: 180px;
-  max-height: 240px;
   overflow-y: auto;
   border: 1px solid #ddd;
   border-radius: 8px;
