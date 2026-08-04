@@ -1,201 +1,492 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
-
-hr {
-  margin: 1.5rem 0;
-}
-
-#chatStatus,
-#chatRoom,
-#chatPeerId {
-  margin: 0.3rem 0;
-}
-
-.peerDashboard {
-  display: grid;
-  gap: 1rem;
-  margin: 1.25rem 0;
-  text-align: left;
-}
-
-.peerDashboardSection {
-  display: grid;
-  gap: 0.85rem;
-  padding: 1rem;
-  border: 1px solid rgba(38, 47, 64, 0.1);
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
-  box-shadow: 0 14px 34px rgba(14, 23, 38, 0.06);
-}
-
-.peerDashboardHeader {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.peerDashboardHeaderActions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.peerDashboardHeader h3 {
+  height: 100%;
+  min-height: 100%;
   margin: 0;
-  font-size: 1rem;
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: clip;
 }
 
-.peerDashboardHeader span {
-  font-size: 0.85rem;
-  color: #5b6878;
-}
-
-.peerDashboardToggle {
-  border: 1px solid rgba(38, 47, 64, 0.12);
-  border-radius: 999px;
-  padding: 0.35rem 0.75rem;
-  background: rgba(255, 255, 255, 0.92);
-  color: #243145;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.peerDashboardToggle:hover {
-  background: rgba(248, 250, 252, 1);
-}
-
-.peerDashboardSection.isCollapsed {
-  gap: 0.55rem;
-}
-
-.peerDashboardGrid {
-  display: grid;
-  gap: 0.85rem;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-}
-
-.peerDashboardEmpty {
-  padding: 0.95rem 1rem;
-  border-radius: 14px;
-  border: 1px dashed rgba(38, 47, 64, 0.18);
-  background: rgba(255, 255, 255, 0.72);
-  color: #516072;
-}
-
-#chatDialStatus {
-  margin: 0.3rem 0 0.8rem;
-  text-align: left;
-  color: #333;
-}
-
-#chatDiagnostics {
-  margin: 0.75rem 0;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 0.75rem;
-  text-align: left;
-  background: #fff;
-}
-
-#chatDiagnostics button {
-  margin-top: 0.5rem;
-}
-
-.chatControls {
+.App.discordApp {
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  max-width: 100%;
   display: flex;
-  gap: 0.5rem;
-  margin: 0.75rem 0;
+  flex-direction: column;
+  overflow: clip;
 }
 
-.chatControls input {
+.discordShell {
   flex: 1;
-  padding: 0.5rem;
+  min-height: 0;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: clamp(180px, 22vw, 250px) minmax(0, 1fr) clamp(200px, 24vw, 280px);
+  gap: 0.65rem;
+  padding: 0.85rem;
+  overflow: clip;
 }
 
-.chatControls button {
+.heliaStatusBanner {
+  margin: 0.85rem 0.85rem 0;
+  border: 2px solid #54db8f;
+  border-radius: 10px;
+  padding: 0.5rem 0.75rem;
+  color: #dce4ff;
+  background: rgba(12, 16, 29, 0.55);
+  font-size: 0.82rem;
+}
+
+.channelsSidebar,
+.chatMainPanel,
+.membersSidebar {
+  min-width: 0;
+  min-height: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(164, 181, 233, 0.16);
+  background: rgba(23, 28, 48, 0.84);
+  color: #e6ecff;
+}
+
+.channelsSidebar {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: 0.8rem;
+}
+
+.sidebarTitle {
+  margin: 0;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #97a8d8;
+  font-weight: 700;
+  padding: 0.15rem 0.25rem 0.55rem;
+}
+
+.channelsList,
+.membersList {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.channelsList {
+  gap: 0.32rem;
+}
+
+.channelButton {
+  align-items: center;
+  gap: 0.45rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #cad5f7;
+  padding: 0.52rem 0.6rem;
+  text-align: left;
+  width: 100%;
+}
+
+.channelButton:hover {
+  background: rgba(92, 110, 157, 0.35);
+}
+
+.channelButton.isActive {
+  background: linear-gradient(90deg, rgba(98, 140, 255, 0.52), rgba(67, 101, 201, 0.35));
+  color: #f5f8ff;
+}
+
+.channelPrefix {
+  color: #8ea0d6;
+  font-weight: 800;
+}
+
+.channelName {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-#chatMessages {
-  min-height: 180px;
-  max-height: 240px;
-  overflow-y: auto;
-  border: 1px solid #ddd;
+.channelComposerWrap {
+  display: grid;
+  gap: 0.55rem;
+  align-self: end;
+  position: sticky;
+  bottom: 0;
+  background: inherit;
+  padding-top: 12px;
+}
+
+.channelAddButton {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #67f0a0, #33b76d);
+  color: #10251a;
+  font-size: 2.1rem;
+  line-height: 1;
+  padding: 0.35rem 0;
+  font-weight: 900;
+}
+
+.channelAddButton:hover {
+  filter: brightness(1.06);
+}
+
+.channelComposer {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid rgba(141, 159, 210, 0.28);
+  border-radius: 10px;
+  background: rgba(18, 23, 43, 0.86);
+  padding: 0.55rem;
+}
+
+.channelComposerModes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.modeButton,
+.channelApplyButton {
+  border: 1px solid rgba(147, 166, 224, 0.32);
   border-radius: 8px;
-  padding: 0.75rem;
-  text-align: left;
-  background: #fafafa;
+  background: rgba(34, 42, 72, 0.92);
+  color: #dce5ff;
+  padding: 0.45rem 0.55rem;
+  font-weight: 700;
 }
 
-.chatMessage {
-  margin: 0.2rem 0;
-  word-break: break-word;
+.modeButton.isSelected {
+  background: rgba(91, 126, 236, 0.9);
+  border-color: rgba(133, 168, 255, 0.9);
 }
 
-.chatMessage.system {
-  color: #666;
+.channelComposer input,
+.chatUtilityBar input {
+  border-radius: 9px;
+  border: 1px solid rgba(145, 163, 215, 0.32);
+  background: rgba(18, 23, 43, 0.9);
+  color: #edf2ff;
+  padding: 0.55rem 0.65rem;
 }
 
-.chatMessage.self {
-  color: #0a66c2;
+.channelComposer input::placeholder,
+.chatUtilityBar input::placeholder {
+  color: #92a4d7;
 }
 
-.chatMessage.peer {
-  color: #111;
+.chatMainPanel {
+  container-type: inline-size;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  /* padding: 0.75rem; */ /* Remove padding because it screws up alignment on left side?*/
+  /* gap: 0.7rem;  */ /* Remove gap at bottom */
+}
+
+.chatMainHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.85rem;
+  border-bottom: 1px solid rgba(145, 164, 219, 0.23);
+  padding-bottom: 0.6rem;
+}
+
+.chatMainHeader h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #f2f6ff;
+}
+
+.chatMainHeader p {
+  margin: 0.2rem 0 0;
+  color: #aab9e2;
+  font-size: 0.88rem;
+}
+
+.chatHeaderMeta {
+  text-align: right;
+  color: #9cb1e7;
+  font-size: 0.82rem;
+}
+
+.chatUtilityBar {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.6fr) minmax(200px, 1fr) auto auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.chatUtilityBar button,
+#chatRefreshDiagnosticsButton {
+  border-radius: 9px;
+  border: 1px solid rgba(145, 165, 223, 0.34);
+  background: rgba(38, 48, 82, 0.96);
+  color: #dfebff;
+  padding: 0.52rem 0.7rem;
+  white-space: nowrap;
+}
+
+.chatUtilityBar button:hover,
+#chatRefreshDiagnosticsButton:hover,
+.channelApplyButton:hover,
+.modeButton:hover {
+  filter: brightness(1.08);
+}
+
+.chatRoomPanel {
+  min-height: 0;
+}
+
+#chatDiagnostics {
+  border: 1px solid rgba(136, 155, 207, 0.34);
+  border-radius: 10px;
+  padding: 0.68rem;
+  background: rgba(17, 23, 44, 0.93);
+  color: #cfdbfd;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.86rem;
 }
 
 #chatDebugLog {
-  margin-top: 0.75rem;
-  min-height: 120px;
-  max-height: 220px;
-  overflow-y: auto;
-  text-align: left;
-  background: #101418;
-  color: #c7f1d5;
-  border: 1px solid #2e3a3a;
-  border-radius: 8px;
-  padding: 0.75rem;
+  margin: 0;
+  border: 1px solid rgba(129, 154, 214, 0.3);
+  border-radius: 10px;
+  padding: 0.65rem;
+  background: #10162a;
+  color: #bceacf;
   white-space: pre-wrap;
+  min-height: 110px;
+  max-height: 210px;
+  overflow-y: auto;
+}
+
+.membersSidebar {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 0.42rem;
+  padding: 0.8rem;
+}
+
+.membersMeta {
+  color: #98addf;
+  font-size: 0.82rem;
+  padding: 0 0.25rem;
+}
+
+.memberRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.42rem 0.38rem;
+  border-radius: 8px;
+}
+
+.memberRow:hover {
+  background: rgba(93, 111, 160, 0.25);
+}
+
+.memberStatus {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 999px;
+}
+
+.memberStatus.isConnected {
+  background: #4ce07f;
+  box-shadow: 0 0 0 2px rgba(76, 224, 127, 0.18);
+}
+
+.memberStatus.isDisconnected {
+  background: #a2b2dd;
+}
+
+.memberName {
+  color: #d7e2ff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.membersEmpty {
+  margin: 0.55rem 0.25rem;
+  color: #9cafdc;
+  font-size: 0.85rem;
+}
+
+.mobilePanelToggle,
+.mobileDrawerClose,
+.mobileDrawerBackdrop {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .discordShell {
+    grid-template-columns: clamp(160px, 20vw, 220px) minmax(0, 1fr) clamp(180px, 22vw, 240px);
+  }
+}
+
+@container (max-width: 760px) {
+  .chatUtilityBar {
+    grid-template-columns: 1fr;
+  }
+
+  #chatNameInput,
+  #chatDialMultiaddrInput,
+  #chatDialPeerButton,
+  #chatToggleDiagnosticsButton,
+  #chatToggleDebugLogButton,
+  .channelApplyButton {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .discordShell {
+    grid-template-columns: minmax(0, 1fr);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .chatMainPanel {
+    grid-column: 1;
+    width: 100%;
+  }
+
+  .chatMainHeader {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
+    gap: 12px;
+  }
+
+  .chatHeaderBody {
+    display: grid;
+    gap: 6px;
+  }
+
+  .chatHeaderMeta {
+    display: grid;
+    gap: 4px;
+    font-size: 0.8rem;
+    opacity: 0.9;
+  }
+
+  #chatPeerId,
+  #chatDialStatus {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chatUtilityBar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  #chatNameInput,
+  #chatDialMultiaddrInput,
+  #chatDialPeerButton,
+  #chatToggleDiagnosticsButton,
+  #chatToggleDebugLogButton,
+  .channelApplyButton {
+    width: 100%;
+  }
+
+  .mobilePanelToggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.08);
+    color: inherit;
+    font-size: 1.05rem;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+
+  .mobileDrawerClose {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.08);
+    color: inherit;
+    font-size: 1.2rem;
+    line-height: 1;
+  }
+
+  .mobileDrawerBackdrop {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    border: 0;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(2px);
+  }
+
+  .channelsSidebar.mobileDrawer,
+  .membersSidebar.mobileDrawer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 30;
+    width: min(82vw, 320px);
+    max-width: 320px;
+    overflow-y: auto;
+    padding-bottom: 20px;
+    transition: transform 180ms ease, box-shadow 180ms ease;
+    box-shadow: none;
+  }
+
+  .channelsSidebar.mobileDrawer {
+    left: 0;
+    transform: translateX(-104%);
+  }
+
+  .membersSidebar.mobileDrawer {
+    right: 0;
+    transform: translateX(104%);
+  }
+
+  .channelsSidebar.mobileDrawer.isOpen,
+  .membersSidebar.mobileDrawer.isOpen {
+    transform: translateX(0);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+  }
+
+  .hasMobileDrawerOpen .chatMainPanel {
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .channelComposerWrap {
+    position: sticky;
+    bottom: 0;
+    background: inherit;
+    padding-top: 12px;
+  }
+
+  .membersList,
+  .channelsList {
+    padding-bottom: 12px;
+  }
 }

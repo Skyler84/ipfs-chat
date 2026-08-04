@@ -62,7 +62,7 @@ const ChatInput = ({
           maxHeight: '2000px',
           overflowY: 'auto',
           flex: '1',
-          'field-sizing': 'content'
+          fieldSizing: 'content'
         }}
       />
       <button id={sendButtonId} className='chatInputSendButton' type='submit' disabled={disabled}>Send</button>

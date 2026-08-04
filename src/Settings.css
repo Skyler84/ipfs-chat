@@ -1,9 +1,3 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
 
 .logo {
   height: 6em;
@@ -87,7 +81,6 @@ hr {
 
 #chatMessages {
   min-height: 180px;
-  max-height: 240px;
   overflow-y: auto;
   border: 1px solid #ddd;
   border-radius: 8px;

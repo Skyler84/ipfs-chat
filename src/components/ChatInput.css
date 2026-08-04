@@ -2,9 +2,9 @@
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 0.5rem;
-  margin-top: 0.75rem;
   align-items: center;
   width: 100%;
+  align-self: end;
 }
 
 .chatInputComposer.hasExtras {
@@ -21,7 +21,17 @@
   width: 100%;
   min-width: 0;
   box-sizing: border-box;
-  padding: 0.5rem;
+  border-radius: 10px;
+  border: 1px solid rgba(141, 160, 214, 0.3);
+  background: rgba(22, 30, 54, 0.95);
+  color: #ecf2ff;
+  padding: 0.62rem 0.72rem;
+  font-size: 0.96rem;
+  line-height: 1.3;
+}
+
+.chatInputField::placeholder {
+  color: #93a5d8;
 }
 
 .chatInputSendButton {
@@ -29,6 +39,16 @@
   flex-shrink: 0;
   width: fit-content;
   justify-self: start;
+  border-radius: 10px;
+  border: 1px solid rgba(141, 160, 214, 0.34);
+  background: linear-gradient(180deg, #7aa5ff, #5884e4);
+  color: #f4f8ff;
+  padding: 0.56rem 0.9rem;
+  font-weight: 700;
+}
+
+.chatInputSendButton:hover {
+  filter: brightness(1.08);
 }
 
 @media (max-width: 640px) {
