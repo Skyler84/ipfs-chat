@@ -12,6 +12,7 @@ import { ChatRoomAddress } from './ChatRoomAddress'
 const DEFAULT_CHAT_ROOM = 'helia-examples/chatroom'
 const DISCOVERY_SETTINGS_STORAGE_KEY = 'ipfs-chat-settings'
 const PROVIDER_LOOKUP_TIMEOUT_MS = 8000
+const PROVIDER_LOOKUP_POLL_PERIOD_MS = 10000
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
@@ -333,7 +334,14 @@ function App () {
     pushDebugLog(`providing room manifest ${roomIdentifier}`)
 
     try {
-      await contentRouting.provide(roomManifestCid)
+      await contentRouting.provide(roomManifestCid, {onProgress: (event) => {
+          const providedPeerId = event?.provider?.toString?.() ?? ''
+          // pushDebugLog(`provide progress room=${normalizedRoom} peer=${providedPeerId}`)
+          // console.log(`provide progress room=${normalizedRoom} peer=${providedPeerId}`)
+        },
+        useCache: false,
+        useNetwork: true
+      })
       announcedRoomProvidersRef.current.add(normalizedRoom)
       pushDebugLog(`provided room manifest ${roomIdentifier}`)
     } catch (err) {
@@ -452,11 +460,13 @@ function App () {
 
     updatePeerDetails()
     const interval = setInterval(updatePeerDetails, 500)
+    const discover_interval = setInterval(discoverRoomProviders, PROVIDER_LOOKUP_POLL_PERIOD_MS, activeRoomRef.current)
 
     return () => {
       clearInterval(interval)
+      clearInterval(discover_interval)
     }
-  }, [helia, updatePeerDetails])
+  }, [helia, updatePeerDetails, discoverRoomProviders])
 
   useEffect(() => {
     if (helia == null) {
@@ -487,16 +497,16 @@ function App () {
     })
 
     const onPeerConnect = (event) => {
-      pushDebugLog(`peer connected ${event.detail.toString()}`)
-      subscribedRoomsRef.current.forEach((room) => {
-        void announceRoomManifestProvider(room)
-        void discoverRoomProviders(room)
-      })
+      // pushDebugLog(`peer connected ${event.detail.toString()}`)
+      // subscribedRoomsRef.current.forEach((room) => {
+      //   void announceRoomManifestProvider(room)
+      //   void discoverRoomProviders(room)
+      // })
       refreshPubsubDiagnostics()
     }
 
     const onPeerDisconnect = (event) => {
-      pushDebugLog(`peer disconnected ${event.detail.toString()}`)
+      // pushDebugLog(`peer disconnected ${event.detail.toString()}`)
       refreshPubsubDiagnostics()
     }
 
