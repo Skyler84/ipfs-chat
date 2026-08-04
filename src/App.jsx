@@ -7,8 +7,11 @@ import RoomsSidebar from './components/RoomsSidebar'
 import { useMobilePanels } from '@/hooks/useMobilePanels'
 import { useHelia } from '@/hooks/useHelia'
 import { multiaddr } from '@multiformats/multiaddr'
+import { ChatRoomAddress } from './ChatRoomAddress'
 
 const DEFAULT_CHAT_ROOM = 'helia-examples/chatroom'
+const DISCOVERY_SETTINGS_STORAGE_KEY = 'ipfs-chat-settings'
+const PROVIDER_LOOKUP_TIMEOUT_MS = 8000
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 
@@ -39,6 +42,8 @@ function App () {
   const seenIdsByRoomRef = useRef(new Map())
   const autoDialAttemptedAtRef = useRef(new Map())
   const peerConnectionFirstSeenRef = useRef(new Map())
+  const announcedRoomProvidersRef = useRef(new Set())
+  const providerLookupInFlightRef = useRef(new Set())
   const messageHandlerRef = useRef(null)
   const { helia, error, starting } = useHelia()
   const {
@@ -60,6 +65,35 @@ function App () {
   const pushDebugLog = useCallback((line) => {
     const timestamp = new Date().toLocaleTimeString()
     setChatDebugLog((previous) => [`[${timestamp}] ${line}`, ...previous].slice(0, 120))
+  }, [])
+
+  const getDiscoverySettings = useCallback(() => {
+    const defaults = {
+      detectPeers: true,
+      providePeers: true
+    }
+    const encodedSettings = localStorage.getItem(DISCOVERY_SETTINGS_STORAGE_KEY)
+
+    if (encodedSettings == null) {
+      return defaults
+    }
+
+    try {
+      const parsedSettings = JSON.parse(encodedSettings)
+
+      return {
+        detectPeers: parsedSettings?.detectPeers !== false,
+        providePeers: parsedSettings?.providePeers !== false
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      pushDebugLog(`failed to parse discovery settings: ${message}`)
+      return defaults
+    }
+  }, [pushDebugLog])
+
+  const toRoomManifestIdentifier = useCallback(async (room) => {
+    return (await ChatRoomAddress.parse(room)).toString()
   }, [])
 
   const formatConnectionProtocols = (connection) => {
@@ -235,43 +269,6 @@ function App () {
     })
   }, [appendRoomMessage])
 
-  const subscribeToRoom = useCallback((room, options = {}) => {
-    const { focus = false, announce = true, actionLabel = 'Joined room' } = options
-    const pubsub = pubsubRef.current
-    const normalizedRoom = room.trim()
-
-    if (pubsub == null || normalizedRoom === '') {
-      return false
-    }
-
-    if (!subscribedRoomsRef.current.has(normalizedRoom)) {
-      pubsub.subscribe(normalizedRoom)
-      subscribedRoomsRef.current.add(normalizedRoom)
-      pushDebugLog(`subscribed to topic ${normalizedRoom}`)
-
-      if (announce) {
-        addSystemMessage(normalizedRoom, `${actionLabel}: ${normalizedRoom}`)
-      }
-    }
-
-    setChannels((previous) => {
-      if (previous.includes(normalizedRoom)) {
-        return previous
-      }
-
-      return previous.concat(normalizedRoom)
-    })
-
-    if (focus) {
-      activeRoomRef.current = normalizedRoom
-      setActiveRoom(normalizedRoom)
-      setChatStatus(`Chat connected in ${normalizedRoom}`)
-    }
-
-    refreshPubsubDiagnostics(normalizedRoom)
-    return true
-  }, [addSystemMessage, pushDebugLog, refreshPubsubDiagnostics])
-
   const maybeAutoDialPeer = useCallback(async (peerTarget, peerIdText) => {
     if (helia == null || peerIdText === '' || peerIdText === localPeerId) {
       return
@@ -304,6 +301,146 @@ function App () {
       pushDebugLog(`auto-dial failed for peer ${peerIdText}: ${message}`)
     }
   }, [helia, localPeerId, pushDebugLog, refreshPubsubDiagnostics])
+
+  const announceRoomManifestProvider = useCallback(async (room) => {
+    if (helia == null) {
+      return
+    }
+
+    const normalizedRoom = room.trim()
+
+    if (normalizedRoom === '' || announcedRoomProvidersRef.current.has(normalizedRoom)) {
+      return
+    }
+
+    const { providePeers } = getDiscoverySettings()
+
+    if (!providePeers) {
+      pushDebugLog(`provider announce skipped (disabled) room=${normalizedRoom}`)
+      return
+    }
+
+    const contentRouting = helia.libp2p.contentRouting
+
+    if (contentRouting == null || typeof contentRouting.provide !== 'function') {
+      pushDebugLog(`provider announce unavailable room=${normalizedRoom}`)
+      return
+    }
+
+    const roomAddress = await ChatRoomAddress.parse(normalizedRoom)
+    const roomManifestCid = roomAddress.cid
+    const roomIdentifier = await toRoomManifestIdentifier(normalizedRoom)
+    pushDebugLog(`providing room manifest ${roomIdentifier}`)
+
+    try {
+      await contentRouting.provide(roomManifestCid)
+      announcedRoomProvidersRef.current.add(normalizedRoom)
+      pushDebugLog(`provided room manifest ${roomIdentifier}`)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      pushDebugLog(`provide failed room=${normalizedRoom} error=${message}`)
+    }
+  }, [getDiscoverySettings, helia, pushDebugLog, toRoomManifestIdentifier])
+
+  const discoverRoomProviders = useCallback(async (room) => {
+    if (helia == null) {
+      return
+    }
+
+    const normalizedRoom = room.trim()
+
+    if (normalizedRoom === '') {
+      return
+    }
+
+    const { detectPeers } = getDiscoverySettings()
+
+    if (!detectPeers) {
+      pushDebugLog(`provider lookup skipped (disabled) room=${normalizedRoom}`)
+      return
+    }
+
+    if (providerLookupInFlightRef.current.has(normalizedRoom)) {
+      return
+    }
+
+    const contentRouting = helia.libp2p.contentRouting
+
+    if (contentRouting == null || typeof contentRouting.findProviders !== 'function') {
+      pushDebugLog(`provider lookup unavailable room=${normalizedRoom}`)
+      return
+    }
+
+    providerLookupInFlightRef.current.add(normalizedRoom)
+    const roomAddress = await ChatRoomAddress.parse(normalizedRoom)
+    const roomManifestCid = roomAddress.cid
+    const roomIdentifier = await toRoomManifestIdentifier(normalizedRoom)
+    let providerCount = 0
+    pushDebugLog(`finding providers for ${roomIdentifier}`)
+
+    try {
+      for await (const provider of contentRouting.findProviders(roomManifestCid, { timeout: PROVIDER_LOOKUP_TIMEOUT_MS })) {
+        const providerPeerId = provider?.id?.toString?.() ?? ''
+
+        if (providerPeerId === '' || providerPeerId === localPeerId) {
+          continue
+        }
+
+        providerCount += 1
+        pushDebugLog(`provider found room=${normalizedRoom} peer=${providerPeerId}`)
+        void maybeAutoDialPeer(provider.id ?? providerPeerId, providerPeerId)
+      }
+
+      if (providerCount === 0) {
+        pushDebugLog(`no providers found for ${roomIdentifier}`)
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      pushDebugLog(`provider lookup failed room=${normalizedRoom} error=${message}`)
+    } finally {
+      providerLookupInFlightRef.current.delete(normalizedRoom)
+    }
+  }, [getDiscoverySettings, helia, localPeerId, maybeAutoDialPeer, pushDebugLog, toRoomManifestIdentifier])
+
+  const subscribeToRoom = useCallback((room, options = {}) => {
+    const { focus = false, announce = true, actionLabel = 'Joined room' } = options
+    const pubsub = pubsubRef.current
+    const normalizedRoom = room.trim()
+
+    if (pubsub == null || normalizedRoom === '') {
+      return false
+    }
+
+    if (!subscribedRoomsRef.current.has(normalizedRoom)) {
+      pubsub.subscribe(normalizedRoom)
+      subscribedRoomsRef.current.add(normalizedRoom)
+      pushDebugLog(`subscribed to topic ${normalizedRoom}`)
+
+      if (announce) {
+        addSystemMessage(normalizedRoom, `${actionLabel}: ${normalizedRoom}`)
+      }
+
+      void announceRoomManifestProvider(normalizedRoom)
+      void discoverRoomProviders(normalizedRoom)
+    }
+
+    setChannels((previous) => {
+      if (previous.includes(normalizedRoom)) {
+        return previous
+      }
+
+      return previous.concat(normalizedRoom)
+    })
+
+    if (focus) {
+      activeRoomRef.current = normalizedRoom
+      setActiveRoom(normalizedRoom)
+      setChatStatus(`Chat connected in ${normalizedRoom}`)
+    }
+
+    refreshPubsubDiagnostics(normalizedRoom)
+    return true
+  }, [addSystemMessage, announceRoomManifestProvider, discoverRoomProviders, pushDebugLog, refreshPubsubDiagnostics])
 
   useEffect(() => {
     if (helia == null) {
@@ -351,6 +488,10 @@ function App () {
 
     const onPeerConnect = (event) => {
       pushDebugLog(`peer connected ${event.detail.toString()}`)
+      subscribedRoomsRef.current.forEach((room) => {
+        void announceRoomManifestProvider(room)
+        void discoverRoomProviders(room)
+      })
       refreshPubsubDiagnostics()
     }
 
@@ -428,9 +569,21 @@ function App () {
       })
 
       subscribedRoomsRef.current.clear()
+      announcedRoomProvidersRef.current.clear()
+      providerLookupInFlightRef.current.clear()
       activeRoomRef.current = ''
     }
-  }, [appendRoomMessage, helia, markSeen, maybeAutoDialPeer, pushDebugLog, refreshPubsubDiagnostics, subscribeToRoom])
+  }, [
+    announceRoomManifestProvider,
+    appendRoomMessage,
+    discoverRoomProviders,
+    helia,
+    markSeen,
+    maybeAutoDialPeer,
+    pushDebugLog,
+    refreshPubsubDiagnostics,
+    subscribeToRoom
+  ])
 
   const selectRoom = (room) => {
     const normalizedRoom = room.trim()
@@ -453,6 +606,7 @@ function App () {
     setActiveRoom(normalizedRoom)
     setChatStatus(`Switched to ${normalizedRoom}`)
     refreshPubsubDiagnostics(normalizedRoom)
+    void discoverRoomProviders(normalizedRoom)
 
     if (isMobileViewport()) {
       closeMobilePanel()

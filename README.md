@@ -14,7 +14,10 @@ Browser-based peer-to-peer chat using Helia (IPFS) + libp2p PubSub.
 - Messages are kept in memory per room for the current session only (no durable chat history yet).
 
 ### Connectivity Model
-- No automatic room discovery via DHT/manifests yet.
+- Simple room discovery via DHT provider records is available.
+- Room manifest identifier format is `/ipfs-chat/<manifest-cid>`.
+- Manifest CID is CIDv1 `raw` with identity multihash of the plaintext room name bytes.
+- On room join/create, peers announce (`provide`) that manifest CID and query (`findProviders`) for other peers that provide it.
 - Manual peer dial is supported via multiaddr input.
 - Peer connections are tracked and shown in diagnostics/member views.
 - App will attempt opportunistic auto-dial when it receives a message from an unknown sender peer (rate-limited), to improve mesh connectivity.
@@ -49,8 +52,7 @@ Browser-based peer-to-peer chat using Helia (IPFS) + libp2p PubSub.
 - No end-to-end encryption or history encryption yet.
 
 ### Not Implemented Yet
-- DHT-backed room/member discovery.
-- Manifest-based room identity.
+- Rich/signed manifest documents (current manifest is plaintext room name only).
 - Durable chat history (local or distributed).
 - OrbitDB integration (history, ACLs, accounts).
 - Key rotation and encrypted history flows.
