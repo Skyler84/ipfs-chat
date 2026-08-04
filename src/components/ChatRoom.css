@@ -3,6 +3,7 @@
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 0.5rem;
   min-height: 0;
+  height: 100%; /*Fill total height space.*/
 }
 
 .chatRoomMessages {
