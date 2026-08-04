@@ -1,6 +1,6 @@
 {
-  "v0.5.0-a1": {
-    "description": "- Fix: About urls incorrect for localhost:8080 The port was being included twice due to use of window.location.host instead of window.location.hostname\n- Start to multiple chatrooms. It doesn't quite work yet.\n- It works now. Fixed issues with chatroom selection/joining (text input issue)"
+  "v0.5.0": {
+    "description": "- Fix: About urls incorrect for localhost:8080 The port was being included twice due to use of window.location.host instead of window.location.hostname\n- Start to multiple chatrooms. It doesn't quite work yet.\n- It works now. Fixed issues with chatroom selection/joining (text input issue)\n- prep v0.5.0\n- Styling: Fix layout so things are better placed (following feedback)\n- Fix reproducible build (hopefully). There were 2 issues at play: - CRLF/LF line ending difference on windows/linux - ChatMessage.module.css seemed to cause different minified names on Windows/Linux\n- More styling improvements for mobile users.\n- Refactor: Getting copilot to break stuff down. App was getting too monolithic so it's time to break it into smaller components/chunks. Should make it easier for me to manage.\n- Make swipe gestures actually work on mobile!\n- Merge branch 'multiple-chatrooms'"
   },
   "v0.4.1": {
     "description": "- Add browser IDBBlockstore support.\n- Add build-time script to manage history.\n- Remove references to old text bit.\n- Add ChatMessage+ChatInput+ChatRoom components.\n- Fix: Libp2p options When refactoring the libp2p options, it was not using helia sane defaults. We weren't getting many peers any more.\n- Make ChatInput component support multiline text.",
