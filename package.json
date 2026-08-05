@@ -11,6 +11,7 @@
     "tag": "tsx scripts/tag.ts",
     "build": "vite build",
     "build:car": "npm run build && ipfs-car pack ./dist --output ./dist.car",
+    "publish": "npm run build:car && tsx scripts/publish.ts",
     "preview": "vite preview",
     "test": "npm run build && test-browser-example test"
   },
@@ -40,8 +41,9 @@
     "@types/react-dom": "^19.0.1",
     "@vitejs/plugin-react": "^6.0.1",
     "ipfs-car": "^3.1.0",
-    "tsx": "^4.20.5",
+    "qrcode-terminal": "^0.12.0",
     "test-ipfs-example": "^1.3.3",
+    "tsx": "^4.20.5",
     "vite": "^8.0.8"
   }
 }

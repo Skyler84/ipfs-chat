@@ -117,6 +117,73 @@ npm run dev
 npm run build
 ```
 
+### Publish (IPFS + Optional IPNS)
+
+The publish flow is implemented in `scripts/publish.ts` and is executed by:
+
+```bash
+npm run publish
+```
+
+This command:
+
+- Builds `dist/` and packs it into `dist.car` (`npm run build:car`).
+- Imports the CAR into Kubo and gets a root CID.
+- Copies that CID into MFS at `/self/ipfs-chat/<branch>/<describe>[_<timestamp-if-dirty>]`.
+- Prints terminal QR code output:
+  - IPFS only when no IPNS key is provided.
+  - IPFS + IPNS side-by-side when IPNS is enabled.
+
+#### IPNS Is Optional
+
+IPNS publish only runs when a key/identity is provided by either CLI parameter or environment variable.
+
+- CLI aliases: `--ipns-key`, `--key`, `--identity`, `-k`
+- Env vars: `IPNS_KEY`, `IPNS_KEY_NAME`, `IPNS_IDENTITY`
+
+If no key is provided, the script skips IPNS and still completes the IPFS publish flow.
+
+#### Missing Key Behavior (Prompt Required)
+
+When an IPNS key is provided but does not exist in Kubo:
+
+- The script prompts for confirmation before creating it.
+- If declined, the script aborts.
+- If no interactive TTY is available, it fails rather than silently creating a key.
+
+#### Skip Slow IPNS Publish When Unchanged
+
+When IPNS is enabled, the script resolves the current IPNS target first.
+
+- If the current IPNS record already points to `/ipfs/<new-cid>` (or a subpath under it), publish is skipped.
+- Otherwise, it publishes a new IPNS record.
+
+#### Publish Configuration
+
+- `KUBO_URL` (default: `http://127.0.0.1:5001`)
+- `GATEWAY_URL` (default: `http://localhost:8080/`)
+- `REPO_ROOT` (default: current working directory)
+
+#### Examples
+
+IPFS only:
+
+```bash
+npm run publish
+```
+
+IPFS + IPNS via CLI key name:
+
+```bash
+npm run publish -- --ipns-key ipfs-chat-main
+```
+
+IPFS + IPNS via environment variable:
+
+```bash
+IPNS_KEY=ipfs-chat-main npm run publish
+```
+
 ### Test
 ```bash
 npx playwright install
