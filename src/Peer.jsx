@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import './Peer.css';
 import { CopyText } from './components/CopyText';
+import Avatar from './components/Avatar';
 
 const Peer = ({ 
   peerId, 
@@ -11,15 +12,6 @@ const Peer = ({
   latency = null,
   lastSeen = null
 }) => {
-  // Generate a simple avatar based on peer ID
-  const avatar = useMemo(() => {
-    const hash = peerId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const hue = hash % 360;
-    const saturation = 70 + (hash % 30);
-    const lightness = 50 + ((hash / 360) % 20);
-    return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-  }, [peerId]);
-
   // Categorize addresses
   const categorizedAddresses = useMemo(() => {
     return addresses.map(addr => {
@@ -84,18 +76,10 @@ const Peer = ({
     return date.toLocaleDateString();
   };
 
-  const shortPeerId = peerId.slice(0, 8) + '...' + peerId.slice(-8);
-
   return (
     <div className="peer-container">
       <div className="peer-header">
-        <div 
-          className="peer-avatar" 
-          style={{ backgroundColor: avatar }}
-          title={peerId}
-        >
-          {peerId.slice(0, 2).toUpperCase()}
-        </div>
+        <Avatar peerId={peerId} />
         <div className="peer-id-section">
           <div className="peer-id" title={peerId}>
             <CopyText text={peerId} value={peerId} />
