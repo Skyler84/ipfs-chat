@@ -1,3 +1,5 @@
+import MemberPeer from './MemberPeer'
+
 const MembersSidebar = ({ members, isOpen, onCloseMobilePanel }) => {
   return (
     <aside className={`membersSidebar mobileDrawer ${isOpen ? 'isOpen' : ''}`}>
@@ -13,18 +15,21 @@ const MembersSidebar = ({ members, isOpen, onCloseMobilePanel }) => {
         </button>
       </div>
 
-      <div className='membersMeta'>{members.length} in room</div>
+      <div className='membersMeta'>{members.length} tracked in room</div>
 
       <div className='membersList'>
         {members.map((member) => (
-          <div key={member.peerId} className='memberRow'>
-            <span className={`memberStatus ${member.connected ? 'isConnected' : 'isDisconnected'}`} />
-            <span className='memberName'>{member.peerId}</span>
-          </div>
+          <MemberPeer
+            key={member.peerId}
+            peerId={member.peerId}
+            statusLabel={member.statusLabel}
+            statusTone={member.statusTone}
+            statusDetail={member.statusDetail}
+          />
         ))}
 
         {members.length === 0 && (
-          <div className='membersEmpty'>No peers discovered in this room yet.</div>
+          <div className='membersEmpty'>No peers have been seen in this room yet.</div>
         )}
       </div>
     </aside>

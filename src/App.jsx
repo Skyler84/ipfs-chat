@@ -13,8 +13,32 @@ const DEFAULT_CHAT_ROOM = 'helia-examples/chatroom'
 const DISCOVERY_SETTINGS_STORAGE_KEY = 'ipfs-chat-settings'
 const PROVIDER_LOOKUP_TIMEOUT_MS = 8000
 const PROVIDER_LOOKUP_POLL_PERIOD_MS = 10000
+const MESSAGE_ONLINE_STALE_MS = 5 * 60 * 1000
 const encoder = new TextEncoder()
 const decoder = new TextDecoder()
+const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
+
+const formatRelativeTime = (timestamp) => {
+  if (typeof timestamp !== 'number' || !Number.isFinite(timestamp)) {
+    return 'unknown'
+  }
+
+  const elapsedSeconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000))
+  const timeUnits = [
+    ['day', 86400],
+    ['hour', 3600],
+    ['minute', 60],
+    ['second', 1]
+  ]
+
+  for (const [unit, unitSeconds] of timeUnits) {
+    if (elapsedSeconds >= unitSeconds || unit === 'second') {
+      return relativeTimeFormatter.format(-Math.floor(elapsedSeconds / unitSeconds), unit)
+    }
+  }
+
+  return 'unknown'
+}
 
 function App () {
   const [connectedPeers, setConnectedPeers] = useState(0)
@@ -32,6 +56,8 @@ function App () {
   const [topicSubscribers, setTopicSubscribers] = useState([])
   const [connectedPeerIds, setConnectedPeerIds] = useState([])
   const [connectedPeersDetail, setConnectedPeersDetail] = useState([])
+  const [roomMemberHistory, setRoomMemberHistory] = useState({})
+  const [roomCurrentProviderIds, setRoomCurrentProviderIds] = useState({})
   const [chatDebugLog, setChatDebugLog] = useState([])
   const [dialMultiaddrInput, setDialMultiaddrInput] = useState('')
   const [dialStatus, setDialStatus] = useState('')
@@ -110,6 +136,39 @@ function App () {
 
     return Array.from(new Set(protocolValues))
   }
+
+  const mergePeerObservation = useCallback((room, peerId, observation) => {
+    const normalizedRoom = room.trim()
+    const normalizedPeerId = peerId.trim()
+
+    if (normalizedRoom === '' || normalizedPeerId === '' || normalizedPeerId === localPeerId) {
+      return
+    }
+
+    const observedAt = observation?.observedAt ?? Date.now()
+
+    setRoomMemberHistory((previous) => {
+      const roomHistory = previous[normalizedRoom] ?? {}
+      const currentRecord = roomHistory[normalizedPeerId] ?? {
+        peerId: normalizedPeerId,
+        firstSeenAt: observedAt
+      }
+
+      return {
+        ...previous,
+        [normalizedRoom]: {
+          ...roomHistory,
+          [normalizedPeerId]: {
+            ...currentRecord,
+            ...observation,
+            peerId: normalizedPeerId,
+            firstSeenAt: currentRecord.firstSeenAt ?? observedAt,
+            lastSeenAt: Math.max(currentRecord.lastSeenAt ?? 0, observation?.lastSeenAt ?? observedAt)
+          }
+        }
+      }
+    })
+  }, [localPeerId])
 
   const updatePeerDetails = useCallback(() => {
     if (helia == null) {
@@ -385,17 +444,19 @@ function App () {
     const roomManifestCid = roomAddress.cid
     const roomIdentifier = await toRoomManifestIdentifier(normalizedRoom)
     let providerCount = 0
+    const providerPeerIds = []
     pushDebugLog(`finding providers for ${roomIdentifier}`)
 
     try {
       for await (const provider of contentRouting.findProviders(roomManifestCid, { timeout: PROVIDER_LOOKUP_TIMEOUT_MS })) {
-        const providerPeerId = ('/p2p/' + provider?.id?.toString?.()) ?? ''
+        const providerPeerId = provider?.id?.toString?.() ?? ''
 
         if (providerPeerId === '' || providerPeerId === localPeerId) {
           continue
         }
 
         providerCount += 1
+        providerPeerIds.push(providerPeerId)
         pushDebugLog(`provider found room=${normalizedRoom} peer=${providerPeerId}`)
         void maybeAutoDialPeer(provider.id ?? providerPeerId, providerPeerId)
       }
@@ -407,6 +468,10 @@ function App () {
       const message = err instanceof Error ? err.message : String(err)
       pushDebugLog(`provider lookup failed room=${normalizedRoom} error=${message}`)
     } finally {
+      setRoomCurrentProviderIds((previous) => ({
+        ...previous,
+        [normalizedRoom]: providerPeerIds
+      }))
       providerLookupInFlightRef.current.delete(normalizedRoom)
     }
   }, [getDiscoverySettings, helia, localPeerId, maybeAutoDialPeer, pushDebugLog, toRoomManifestIdentifier])
@@ -456,6 +521,8 @@ function App () {
       setConnectedPeers(0)
       setConnectedPeerIds([])
       setConnectedPeersDetail([])
+      setRoomMemberHistory({})
+      setRoomCurrentProviderIds({})
       return
     }
 
@@ -468,6 +535,28 @@ function App () {
       clearInterval(discover_interval)
     }
   }, [helia, updatePeerDetails, discoverRoomProviders])
+
+  useEffect(() => {
+    if (activeRoom === '' || topicSubscribers.length === 0 || connectedPeersDetail.length === 0) {
+      return
+    }
+
+    const connectedPeerIdSet = new Set(connectedPeersDetail.map((peer) => peer.peerId))
+    const activeRoomConnectedPeers = topicSubscribers.filter((peerId) => connectedPeerIdSet.has(peerId))
+
+    if (activeRoomConnectedPeers.length === 0) {
+      return
+    }
+
+    const observedAt = Date.now()
+
+    activeRoomConnectedPeers.forEach((peerId) => {
+      mergePeerObservation(activeRoom, peerId, {
+        lastConnectedAt: observedAt,
+        observedAt
+      })
+    })
+  }, [activeRoom, connectedPeersDetail, mergePeerObservation, topicSubscribers])
 
   useEffect(() => {
     if (helia == null) {
@@ -535,8 +624,13 @@ function App () {
       const senderTarget = detail?.from ?? senderPeerId
 
       pushDebugLog(`message received topic=${topic} from=${String(payload.from ?? 'anon')}`)
+      mergePeerObservation(topic, senderPeerId, {
+        lastMessageAt: Number(payload.timestamp ?? Date.now()),
+        observedAt: Number(payload.timestamp ?? Date.now())
+      })
       appendRoomMessage(topic, {
         id: payloadId,
+        peerId: senderPeerId,
         from: String(payload.from ?? 'anon'),
         text: String(payload.text ?? ''),
         timestamp: Number(payload.timestamp ?? Date.now())
@@ -584,6 +678,7 @@ function App () {
     discoverRoomProviders,
     helia,
     markSeen,
+    mergePeerObservation,
     maybeAutoDialPeer,
     pushDebugLog,
     refreshPubsubDiagnostics,
@@ -718,23 +813,80 @@ function App () {
   }
 
   const membersByTopic = useMemo(() => {
-    const memberIds = new Set(topicSubscribers)
     const connectedMap = new Map(connectedPeersDetail.map((peer) => [peer.peerId, peer]))
+    const roomHistory = roomMemberHistory[activeRoom] ?? {}
+    const currentProviderIds = new Set(roomCurrentProviderIds[activeRoom] ?? [])
+    const currentConnectedPeerIds = new Set(topicSubscribers.filter((peerId) => connectedMap.has(peerId)))
+    const memberIds = new Set([
+      ...Object.keys(roomHistory),
+      ...currentProviderIds,
+      ...currentConnectedPeerIds
+    ])
+    const now = Date.now()
 
     return Array.from(memberIds)
-      .map((peerId) => ({
-        peerId,
-        connected: connectedMap.has(peerId),
-        detail: connectedMap.get(peerId) ?? null
-      }))
+      .filter((peerId) => peerId !== localPeerId)
+      .map((peerId) => {
+        const history = roomHistory[peerId] ?? {}
+        const connectedNow = currentConnectedPeerIds.has(peerId)
+        const providingNow = currentProviderIds.has(peerId)
+        const lastMessageAt = history.lastMessageAt ?? null
+        const lastConnectedAt = history.lastConnectedAt ?? null
+        const lastSeenAt = lastMessageAt ?? lastConnectedAt ?? null
+
+        let statusTone = 'offline'
+        let statusLabel = 'Offline'
+        let statusDetail = lastSeenAt == null ? '' : `last seen ${formatRelativeTime(lastSeenAt)}`
+
+        if (connectedNow) {
+          statusTone = 'connected'
+          statusLabel = 'Online, Connected'
+          statusDetail = lastConnectedAt == null ? '' : `connected ${formatRelativeTime(lastConnectedAt)}`
+        } else if (providingNow) {
+          statusTone = 'idle'
+          statusLabel = 'Idle'
+          statusDetail = lastSeenAt == null ? '' : `last seen ${formatRelativeTime(lastSeenAt)}`
+        } else if (lastMessageAt != null && now - lastMessageAt <= MESSAGE_ONLINE_STALE_MS) {
+          statusTone = 'online'
+          statusLabel = 'Online'
+          statusDetail = `last seen ${formatRelativeTime(lastMessageAt)}`
+        } else if (lastMessageAt != null || lastConnectedAt != null) {
+          statusTone = 'offline'
+          statusLabel = 'Offline'
+          statusDetail = `last seen ${formatRelativeTime(lastSeenAt)}`
+        }
+
+        return {
+          peerId,
+          statusTone,
+          statusLabel,
+          statusDetail,
+          detail: connectedMap.get(peerId) ?? null,
+          lastSeenAt: lastSeenAt ?? null
+        }
+      })
       .sort((left, right) => {
-        if (left.connected !== right.connected) {
-          return left.connected ? -1 : 1
+        const statusOrder = {
+          connected: 0,
+          online: 1,
+          idle: 2,
+          offline: 3
+        }
+
+        if ((statusOrder[left.statusTone] ?? 99) !== (statusOrder[right.statusTone] ?? 99)) {
+          return (statusOrder[left.statusTone] ?? 99) - (statusOrder[right.statusTone] ?? 99)
+        }
+
+        const leftSeenAt = left.lastSeenAt ?? 0
+        const rightSeenAt = right.lastSeenAt ?? 0
+
+        if (leftSeenAt !== rightSeenAt) {
+          return rightSeenAt - leftSeenAt
         }
 
         return left.peerId.localeCompare(right.peerId)
       })
-  }, [connectedPeersDetail, topicSubscribers])
+  }, [activeRoom, connectedPeersDetail, localPeerId, roomCurrentProviderIds, roomMemberHistory, topicSubscribers])
 
   let colour = 'green'
 

@@ -298,13 +298,26 @@
   border-radius: 999px;
 }
 
+.memberStatus--connected,
 .memberStatus.isConnected {
   background: #4ce07f;
   box-shadow: 0 0 0 2px rgba(76, 224, 127, 0.18);
 }
 
+.memberStatus--online {
+  background: #49d9ff;
+  box-shadow: 0 0 0 2px rgba(73, 217, 255, 0.15);
+}
+
+.memberStatus--idle {
+  background: #f2b84b;
+  box-shadow: 0 0 0 2px rgba(242, 184, 75, 0.18);
+}
+
+.memberStatus--offline,
 .memberStatus.isDisconnected {
-  background: #a2b2dd;
+  background: #7f8eb7;
+  box-shadow: 0 0 0 2px rgba(127, 142, 183, 0.14);
 }
 
 .memberName {
@@ -313,6 +326,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 0.85rem;
+}
+
+.memberPeerCopy {
+  min-width: 0;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.memberPeerStatus {
+  color: #98addf;
+  font-size: 0.76rem;
+  line-height: 1.25;
 }
 
 .membersEmpty {

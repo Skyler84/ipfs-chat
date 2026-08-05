@@ -21,6 +21,12 @@ Browser-based peer-to-peer chat using Helia (IPFS) + libp2p PubSub.
 - Manual peer dial is supported via multiaddr input.
 - Peer connections are tracked and shown in diagnostics/member views.
 - App will attempt opportunistic auto-dial when it receives a message from an unknown sender peer (rate-limited), to improve mesh connectivity.
+- The members sidebar now keeps a per-room presence history and merges three sources of truth:
+  - directly connected room peers are shown as `Online, Connected`
+  - peers that send room messages are shown as `Online, last seen ...`
+  - peers advertising the room manifest over the DHT are shown as `Idle, last seen ...`
+- Previously seen peers remain in the room member list and are marked `Offline` once they are no longer currently connected, messaging, or advertising.
+- The room member row is implemented as a dedicated `MemberPeer` React component so the member presentation can be customized independently of the sidebar layout.
 
 ### Identity and Persistence
 - Helia/libp2p node data is persisted in IndexedDB:
@@ -35,6 +41,7 @@ Browser-based peer-to-peer chat using Helia (IPFS) + libp2p PubSub.
   - rooms sidebar
   - chat workspace
   - members sidebar
+- Members sidebar presence markers use color-coded states for connected, online, idle, and offline peers.
 - Mobile drawer support (gesture + toggle based).
 - Diagnostics panel:
   - subscribed topics
