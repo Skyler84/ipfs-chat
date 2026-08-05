@@ -288,7 +288,25 @@
   border-radius: 8px;
 }
 
+.memberPeerCard {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.memberPeerToggle {
+  width: 100%;
+  border: 0;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  grid-template-columns: auto 1fr auto;
+}
+
 .memberRow:hover {
+  background: rgba(93, 111, 160, 0.25);
+}
+
+.memberPeerToggle.isExpanded {
   background: rgba(93, 111, 160, 0.25);
 }
 
@@ -338,6 +356,115 @@
   color: #98addf;
   font-size: 0.76rem;
   line-height: 1.25;
+}
+
+.memberPeerChevron {
+  color: #98addf;
+  font-size: 0.88rem;
+}
+
+.memberPeerDetails {
+  margin-left: 1.5rem;
+  padding: 0.25rem 0.38rem 0.5rem;
+  border-left: 1px solid rgba(129, 154, 214, 0.26);
+  display: grid;
+  gap: 0.5rem;
+}
+
+.memberPeerIdentity {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.memberPeerAvatar.peer-avatar.avatar {
+  --avatar-block-size: 0.42rem;
+}
+
+.memberPeerIdentityCopy,
+.memberPeerSection,
+.memberPeerAddressItem {
+  display: grid;
+  gap: 0.24rem;
+}
+
+.memberPeerDetailLabel {
+  color: #98addf;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.memberPeerDetailValue,
+.memberPeerAddressValue {
+  color: #d7e2ff;
+  font-size: 0.82rem;
+}
+
+.memberPeerDetailValue--wrap,
+.memberPeerAddressValue {
+  overflow-wrap: anywhere;
+}
+
+.memberPeerSectionToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: 1px solid rgba(129, 154, 214, 0.28);
+  border-radius: 8px;
+  background: rgba(17, 23, 44, 0.5);
+  color: #d7e2ff;
+  padding: 0.45rem 0.55rem;
+}
+
+.memberPeerAddressList {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.memberPeerAddressItem {
+  border: 1px solid rgba(129, 154, 214, 0.24);
+  border-radius: 8px;
+  padding: 0.48rem 0.55rem;
+  background: rgba(17, 23, 44, 0.58);
+}
+
+.memberPeerAddressMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.memberPeerBadge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.16rem 0.48rem;
+  background: rgba(104, 122, 170, 0.25);
+  color: #c8d7fb;
+  font-size: 0.7rem;
+}
+
+.memberPeerBadge.isTrusted {
+  background: rgba(76, 224, 127, 0.18);
+  color: #a8f2be;
+}
+
+.memberPeerBadge.isUntrusted {
+  background: rgba(242, 184, 75, 0.18);
+  color: #ffd58a;
+}
+
+.memberPeerBadge.isConnected {
+  background: rgba(73, 217, 255, 0.18);
+  color: #a7eeff;
+}
+
+.memberPeerEmptyState {
+  color: #98addf;
+  font-size: 0.78rem;
 }
 
 .membersEmpty {

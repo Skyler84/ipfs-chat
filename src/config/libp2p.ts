@@ -17,6 +17,9 @@ export async function Libp2pInitOptions(defaults: any = {}) {
 
     const _Libp2pInitOptions = {
         ...defaults || {},
+        connectionManager: {
+            ...defaults.connectionManager || {},
+        },
         addresses: {
             listen: [
                 '/p2p-circuit',

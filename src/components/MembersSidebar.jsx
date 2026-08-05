@@ -25,6 +25,7 @@ const MembersSidebar = ({ members, isOpen, onCloseMobilePanel }) => {
             statusLabel={member.statusLabel}
             statusTone={member.statusTone}
             statusDetail={member.statusDetail}
+            detail={member.detail}
           />
         ))}
 

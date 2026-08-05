@@ -35,6 +35,20 @@
   color: #888;
 }
 
+.settings-input {
+  width: 100%;
+  max-width: 20rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #cdd5df;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.settings-description {
+  margin: 0.35rem 0 0.5rem;
+  color: #5b6470;
+}
+
 hr {
   margin: 1.5rem 0;
 }

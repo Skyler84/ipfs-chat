@@ -5,7 +5,8 @@ export default function Settings() {
   const [settings, setSettings] = useState({
     detectPeers: true,
     providePeers: true,
-    gatewayURL: 'https://gateway.ipfs.io'
+    gatewayURL: 'https://gateway.ipfs.io',
+    dialTimeoutMs: 30000
   });
 
   // Load settings from localStorage on mount
@@ -13,7 +14,19 @@ export default function Settings() {
     const savedSettings = localStorage.getItem('ipfs-chat-settings');
     if (savedSettings) {
       try {
-        setSettings(JSON.parse(savedSettings));
+        const parsedSettings = JSON.parse(savedSettings);
+        const parsedDialTimeout = Number(parsedSettings?.dialTimeoutMs);
+
+        setSettings({
+          detectPeers: parsedSettings?.detectPeers !== false,
+          providePeers: parsedSettings?.providePeers !== false,
+          gatewayURL: typeof parsedSettings?.gatewayURL === 'string' && parsedSettings.gatewayURL !== ''
+            ? parsedSettings.gatewayURL
+            : 'https://gateway.ipfs.io',
+          dialTimeoutMs: Number.isFinite(parsedDialTimeout) && parsedDialTimeout > 0
+            ? parsedDialTimeout
+            : 30000
+        });
       } catch (error) {
         console.error('Failed to parse settings:', error);
       }
@@ -36,6 +49,15 @@ export default function Settings() {
     setSettings(prev => ({
       ...prev,
       gatewayURL: e.target.value
+    }));
+  };
+
+  const handleDialTimeoutChange = (e) => {
+    const nextValue = Number.parseInt(e.target.value, 10);
+
+    setSettings(prev => ({
+      ...prev,
+      dialTimeoutMs: Number.isNaN(nextValue) ? 30000 : nextValue
     }));
   };
 
@@ -76,6 +98,27 @@ export default function Settings() {
       </section>
 
       <section className="settings-section">
+        <h2>Network</h2>
+
+        <div className="settings-item">
+          <label htmlFor="dial-timeout-ms">Libp2p dialing timeout (ms)</label>
+          <p className="settings-description">
+            Raise this if peer connections are timing out before the network has a chance to respond.
+          </p>
+          <input
+            id="dial-timeout-ms"
+            type="number"
+            min="1000"
+            step="1000"
+            value={settings.dialTimeoutMs}
+            onChange={handleDialTimeoutChange}
+            placeholder="30000"
+            className="settings-input"
+          />
+        </div>
+      </section>
+
+      <section className="settings-section">
         <h2>Gateway</h2>
         
         <div className="settings-item">
@@ -89,7 +132,7 @@ export default function Settings() {
             value={settings.gatewayURL}
             onChange={handleGatewayURLChange}
             placeholder="https://gateway.ipfs.io"
-            className="gateway-input"
+            className="settings-input"
           />
         </div>
       </section>

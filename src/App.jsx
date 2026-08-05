@@ -18,6 +18,58 @@ const encoder = new TextEncoder()
 const decoder = new TextDecoder()
 const relativeTimeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
 
+const normalizeTimestamp = (value) => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+
+  if (value instanceof Date) {
+    const timestamp = value.getTime()
+    return Number.isNaN(timestamp) ? null : timestamp
+  }
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    const timestamp = Date.parse(value)
+    return Number.isNaN(timestamp) ? null : timestamp
+  }
+
+  return null
+}
+
+const mergeAddressDetails = (addressEntries) => {
+  const addressesByValue = new Map()
+
+  addressEntries.forEach((entry) => {
+    const addressValue = String(entry?.address ?? '').trim()
+
+    if (addressValue === '') {
+      return
+    }
+
+    const previous = addressesByValue.get(addressValue)
+    const nextLastConnected = normalizeTimestamp(entry?.lastConnected)
+
+    if (previous == null) {
+      addressesByValue.set(addressValue, {
+        address: addressValue,
+        isCertified: entry?.isCertified === true,
+        lastConnected: nextLastConnected,
+        isConnected: entry?.isConnected === true
+      })
+      return
+    }
+
+    addressesByValue.set(addressValue, {
+      address: addressValue,
+      isCertified: previous.isCertified || entry?.isCertified === true,
+      lastConnected: Math.max(previous.lastConnected ?? 0, nextLastConnected ?? 0) || null,
+      isConnected: previous.isConnected || entry?.isConnected === true
+    })
+  })
+
+  return Array.from(addressesByValue.values()).sort((left, right) => left.address.localeCompare(right.address))
+}
+
 const formatRelativeTime = (timestamp) => {
   if (typeof timestamp !== 'number' || !Number.isFinite(timestamp)) {
     return 'unknown'
@@ -56,6 +108,7 @@ function App () {
   const [topicSubscribers, setTopicSubscribers] = useState([])
   const [connectedPeerIds, setConnectedPeerIds] = useState([])
   const [connectedPeersDetail, setConnectedPeersDetail] = useState([])
+  const [knownPeersDetail, setKnownPeersDetail] = useState([])
   const [roomMemberHistory, setRoomMemberHistory] = useState({})
   const [roomCurrentProviderIds, setRoomCurrentProviderIds] = useState({})
   const [chatDebugLog, setChatDebugLog] = useState([])
@@ -170,15 +223,17 @@ function App () {
     })
   }, [localPeerId])
 
-  const updatePeerDetails = useCallback(() => {
+  const updatePeerDetails = useCallback(async () => {
     if (helia == null) {
       setConnectedPeersDetail([])
+      setKnownPeersDetail([])
       return
     }
 
     const connections = helia.libp2p.getConnections()
     const peerMap = new Map()
     const connectedPeerIdSet = new Set()
+    let storedPeers = []
 
     const parseConnectionStart = (connection) => {
       const openTimestamp = connection?.stat?.timeline?.open
@@ -192,6 +247,13 @@ function App () {
       }
 
       return new Date().toISOString()
+    }
+
+    try {
+      storedPeers = await helia.libp2p.peerStore.all()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      pushDebugLog(`failed to read peer store: ${message}`)
     }
 
     connections.forEach((connection) => {
@@ -215,6 +277,7 @@ function App () {
       const currentPeer = peerMap.get(peerId) ?? {
         peerId,
         addresses: [],
+        addressDetails: [],
         connectedAddress: null,
         connectionHistory: {},
         protocols: [],
@@ -227,6 +290,16 @@ function App () {
         currentPeer.addresses.push(connectionAddress)
       }
 
+      currentPeer.addressDetails = mergeAddressDetails([
+        ...currentPeer.addressDetails,
+        {
+          address: connectionAddress,
+          isCertified: false,
+          lastConnected: connectionStart,
+          isConnected: connectionAddress !== ''
+        }
+      ])
+
       if (currentPeer.connectedAddress == null && connectionAddress !== '') {
         currentPeer.connectedAddress = connectionAddress
       }
@@ -238,14 +311,48 @@ function App () {
       peerMap.set(peerId, currentPeer)
     })
 
+    storedPeers.forEach((storedPeer) => {
+      const peerId = storedPeer?.id?.toString?.() ?? ''
+
+      if (peerId === '') {
+        return
+      }
+
+      const currentPeer = peerMap.get(peerId) ?? {
+        peerId,
+        addresses: [],
+        addressDetails: [],
+        connectedAddress: null,
+        connectionHistory: {},
+        protocols: [],
+        connectionStartedAt: null,
+        latency: null,
+        lastSeen: null
+      }
+
+      const storedAddressDetails = Array.isArray(storedPeer?.addresses)
+        ? storedPeer.addresses.map((addressEntry) => ({
+            address: addressEntry?.multiaddr?.toString?.() ?? '',
+            isCertified: addressEntry?.isCertified === true,
+            lastConnected: addressEntry?.lastConnected ?? null,
+            isConnected: (addressEntry?.multiaddr?.toString?.() ?? '') !== '' && (addressEntry?.multiaddr?.toString?.() ?? '') === currentPeer.connectedAddress
+          }))
+        : []
+
+      currentPeer.addressDetails = mergeAddressDetails(currentPeer.addressDetails.concat(storedAddressDetails))
+      currentPeer.addresses = Array.from(new Set(currentPeer.addressDetails.map((addressEntry) => addressEntry.address)))
+      currentPeer.protocols = Array.from(new Set(currentPeer.protocols.concat(storedPeer?.protocols ?? [])))
+
+      peerMap.set(peerId, currentPeer)
+    })
+
     Array.from(peerConnectionFirstSeenRef.current.keys()).forEach((peerId) => {
       if (!connectedPeerIdSet.has(peerId)) {
         peerConnectionFirstSeenRef.current.delete(peerId)
       }
     })
 
-    setConnectedPeersDetail(
-      Array.from(peerMap.values()).sort((left, right) => {
+    const allPeerDetails = Array.from(peerMap.values()).sort((left, right) => {
         const leftStart = left.connectionStartedAt ?? ''
         const rightStart = right.connectionStartedAt ?? ''
 
@@ -255,10 +362,12 @@ function App () {
 
         return left.peerId.localeCompare(right.peerId)
       })
-    )
+
+    setKnownPeersDetail(allPeerDetails)
+    setConnectedPeersDetail(allPeerDetails.filter((peer) => connectedPeerIdSet.has(peer.peerId)))
     setConnectedPeers(connections.length)
     setConnectedPeerIds(connections.map((connection) => connection.remotePeer.toString()))
-  }, [helia])
+  }, [helia, pushDebugLog])
 
   const refreshPubsubDiagnostics = useCallback((roomOverride) => {
     const pubsub = pubsubRef.current
@@ -394,7 +503,7 @@ function App () {
 
     try {
       await contentRouting.provide(roomManifestCid, {onProgress: (event) => {
-          console.log(event)
+          // console.log(event)
           const providedPeerId = event?.provider?.toString?.() ?? ''
           // pushDebugLog(`provide progress room=${normalizedRoom} peer=${providedPeerId}`)
           // console.log(`provide progress room=${normalizedRoom} peer=${providedPeerId}`)
@@ -521,13 +630,16 @@ function App () {
       setConnectedPeers(0)
       setConnectedPeerIds([])
       setConnectedPeersDetail([])
+      setKnownPeersDetail([])
       setRoomMemberHistory({})
       setRoomCurrentProviderIds({})
       return
     }
 
-    updatePeerDetails()
-    const interval = setInterval(updatePeerDetails, 500)
+    void updatePeerDetails()
+    const interval = setInterval(() => {
+      void updatePeerDetails()
+    }, 5000)
     const discover_interval = setInterval(discoverRoomProviders, PROVIDER_LOOKUP_POLL_PERIOD_MS, activeRoomRef.current)
 
     return () => {
@@ -814,6 +926,7 @@ function App () {
 
   const membersByTopic = useMemo(() => {
     const connectedMap = new Map(connectedPeersDetail.map((peer) => [peer.peerId, peer]))
+    const knownPeerMap = new Map(knownPeersDetail.map((peer) => [peer.peerId, peer]))
     const roomHistory = roomMemberHistory[activeRoom] ?? {}
     const currentProviderIds = new Set(roomCurrentProviderIds[activeRoom] ?? [])
     const currentConnectedPeerIds = new Set(topicSubscribers.filter((peerId) => connectedMap.has(peerId)))
@@ -861,7 +974,7 @@ function App () {
           statusTone,
           statusLabel,
           statusDetail,
-          detail: connectedMap.get(peerId) ?? null,
+          detail: connectedMap.get(peerId) ?? knownPeerMap.get(peerId) ?? null,
           lastSeenAt: lastSeenAt ?? null
         }
       })
@@ -886,7 +999,7 @@ function App () {
 
         return left.peerId.localeCompare(right.peerId)
       })
-  }, [activeRoom, connectedPeersDetail, localPeerId, roomCurrentProviderIds, roomMemberHistory, topicSubscribers])
+  }, [activeRoom, connectedPeersDetail, knownPeersDetail, localPeerId, roomCurrentProviderIds, roomMemberHistory, topicSubscribers])
 
   let colour = 'green'
 
