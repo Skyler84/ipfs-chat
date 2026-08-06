@@ -68,19 +68,19 @@ export const HeliaProvider = ({ children }) => {
         console.info('Starting Helia')
         var libp2p_options = libp2pDefaults()
 
-        // const helia_datastore = new IDBDatastore('helia')
-        // await helia_datastore.open()
+        const helia_datastore = new IDBDatastore('helia')
+        await helia_datastore.open()
 
-        // const helia_blockstore = new IDBBlockstore('helia-blockstore')
-        // await helia_blockstore.open()
+        const helia_blockstore = new IDBBlockstore('helia-blockstore')
+        await helia_blockstore.open()
 
         const dialTimeoutMs = getConfiguredDialTimeout()
         const libp2pInitOptions = await Libp2pInitOptions(libp2p_options, dialTimeoutMs)
         libp2pInitOptions.connectionManager.dialTimeout = 30_000 // 30 seconds
 
         const heliaInit = await heliaDefaults({
-          // datastore: helia_datastore,
-          // blockstore: helia_blockstore,
+          datastore: helia_datastore,
+          blockstore: helia_blockstore,
           libp2p: libp2pInitOptions, // By getting Helia to initialise the libp2p instance, it will use the node ID from the datastore.
         })
         const helia = await createHelia(heliaInit)

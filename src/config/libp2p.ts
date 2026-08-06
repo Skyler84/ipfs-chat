@@ -41,7 +41,9 @@ export async function Libp2pInitOptions(defaults: any = {}) {
         services: {
             ...defaults.services || {},
             identify: identify(),
-            pubsub: gossipsub(),
+            pubsub: gossipsub({
+                runOnLimitedConnection: true,
+            }),
         },
     }
     return _Libp2pInitOptions
